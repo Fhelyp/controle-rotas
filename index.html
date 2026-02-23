@@ -515,6 +515,7 @@
             const [loading, setLoading] = useState(false);
             const [error, setError] = useState('');
             const [success, setSuccess] = useState('');
+            const [editandoId, setEditandoId] = useState(null);
 
             useEffect(() => {
                 carregarDados();
@@ -564,19 +565,35 @@
                 setLoading(true);
                 setError('');
                 try {
-                    const { error: err } = await supabase.from('registros').insert([
-                        {
+                    if (editandoId) {
+                        // Atualizar registro existente
+                        const { error: err } = await supabase.from('registros').update({
                             data,
                             motorista_id: motoristaId,
                             rota_id: rotaId,
                             veiculo_id: veiculoId,
                             observacoes: observacoes || null
-                        }
-                    ]);
+                        }).eq('id', editandoId);
 
-                    if (err) throw err;
+                        if (err) throw err;
+                        setSuccess('Registro atualizado com sucesso!');
+                        setEditandoId(null);
+                    } else {
+                        // Criar novo registro
+                        const { error: err } = await supabase.from('registros').insert([
+                            {
+                                data,
+                                motorista_id: motoristaId,
+                                rota_id: rotaId,
+                                veiculo_id: veiculoId,
+                                observacoes: observacoes || null
+                            }
+                        ]);
 
-                    setSuccess('Registro salvo com sucesso!');
+                        if (err) throw err;
+                        setSuccess('Registro salvo com sucesso!');
+                    }
+
                     setMotoristaId('');
                     setRotaId('');
                     setVeiculoId('');
@@ -587,6 +604,25 @@
                     setError('Erro ao salvar: ' + err.message);
                 }
                 setLoading(false);
+            };
+
+            const editarRegistro = (reg) => {
+                setEditandoId(reg.id);
+                setData(reg.data);
+                setMotoristaId(reg.motorista_id);
+                setRotaId(reg.rota_id);
+                setVeiculoId(reg.veiculo_id);
+                setObservacoes(reg.observacoes || '');
+                window.scrollTo(0, 0);
+            };
+
+            const cancelarEdicao = () => {
+                setEditandoId(null);
+                setMotoristaId('');
+                setRotaId('');
+                setVeiculoId('');
+                setObservacoes('');
+                setData(getTodayString());
             };
 
             const excluirRegistro = async (id) => {
@@ -659,13 +695,39 @@
                         />
                     </div>
 
-                    <button
-                        className="button button-primary"
-                        onClick={salvarRegistro}
-                        disabled={loading}
-                    >
-                        {loading ? 'Salvando...' : 'Salvar Registro'}
-                    </button>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                            className="button button-primary"
+                            onClick={salvarRegistro}
+                            disabled={loading}
+                            style={{ flex: 1 }}
+                        >
+                            {loading ? 'Salvando...' : editandoId ? 'Atualizar Registro' : 'Salvar Registro'}
+                        </button>
+                        {editandoId && (
+                            <button
+                                className="button button-secondary"
+                                onClick={cancelarEdicao}
+                                style={{ flex: 1 }}
+                            >
+                                Cancelar
+                            </button>
+                        )}
+                    </div>
+
+                    {editandoId && (
+                        <div style={{
+                            background: '#fef3c7',
+                            border: '1px solid #fcd34d',
+                            color: '#92400e',
+                            padding: '12px',
+                            borderRadius: '6px',
+                            marginTop: '12px',
+                            fontSize: '13px'
+                        }}>
+                            ✍️ Você está editando um registro. Clique em "Atualizar Registro" para salvar as mudanças.
+                        </div>
+                    )}
 
                     <div style={{ marginTop: '24px' }}>
                         <h3 className="section-title">Registros de {formatDate(data)}</h3>
@@ -690,6 +752,12 @@
                                         </div>
                                     )}
                                     <div className="card-actions">
+                                        <button
+                                            className="button button-secondary"
+                                            onClick={() => editarRegistro(reg)}
+                                        >
+                                            ✍️ Editar
+                                        </button>
                                         <button
                                             className="button button-danger"
                                             onClick={() => excluirRegistro(reg.id)}
