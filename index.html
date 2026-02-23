@@ -525,9 +525,9 @@
                 setError('');
                 try {
                     const [motoristasRes, rotasRes, veiculosRes, registrosRes] = await Promise.all([
-                        supabase.from('motoristas').select('*').order('nome'),
-                        supabase.from('rotas').select('*').order('nome'),
-                        supabase.from('veiculos').select('*').order('nome'),
+                        supabase.from('motoristas').select('*').eq('ativo', true).order('nome'),
+                        supabase.from('rotas').select('*').eq('ativo', true).order('nome'),
+                        supabase.from('veiculos').select('*').eq('ativo', true).order('nome'),
                         supabase
                             .from('registros')
                             .select(`
@@ -595,6 +595,8 @@
                 try {
                     const { error: err } = await supabase.from('registros').delete().eq('id', id);
                     if (err) throw err;
+                    setSuccess('Registro excluído com sucesso!');
+                    setTimeout(() => setSuccess(''), 3000);
                     carregarDados();
                 } catch (err) {
                     setError('Erro ao excluir: ' + err.message);
@@ -788,27 +790,40 @@
             };
 
             const excluirItem = async (type, id) => {
-                if (!confirm('Tem certeza que deseja excluir este item?')) return;
+                if (!confirm('Tem certeza que deseja inativar este item? Os registros históricos serão preservados.')) return;
 
                 try {
-                    const { error: err } = await supabase.from(type).delete().eq('id', id);
+                    const { error: err } = await supabase.from(type).update({ ativo: false }).eq('id', id);
                     if (err) throw err;
+                    setSuccess('Item inativado com sucesso! Os registros históricos foram preservados.');
+                    setTimeout(() => setSuccess(''), 3000);
                     carregarDados();
                 } catch (err) {
-                    setError('Erro ao excluir: ' + err.message);
+                    setError('Erro ao inativar: ' + err.message);
                 }
             };
 
-            const renderSection = (title, type, items) => (
+            const renderSection = (title, type, items) => {
+                // Carregar TODOS os itens (ativos e inativos) para exibição
+                const [allItems, setAllItems] = React.useState([]);
+                React.useEffect(() => {
+                    const loadAll = async () => {
+                        const { data } = await supabase.from(type).select('*').order('nome');
+                        setAllItems(data || []);
+                    };
+                    loadAll();
+                }, [type]);
+
+                return (
                 <div>
                     <h3 className="section-title">{title}</h3>
-                    {items.length === 0 ? (
+                    {allItems.length === 0 ? (
                         <div className="empty-state" style={{ padding: '16px' }}>
                             <div className="empty-state-text">Nenhum item cadastrado</div>
                         </div>
                     ) : (
-                        items.map((item) => (
-                            <div key={item.id} className="list-item">
+                        allItems.map((item) => (
+                            <div key={item.id} className="list-item" style={{ opacity: item.ativo ? 1 : 0.5, backgroundColor: item.ativo ? '#f9fafb' : '#fef2f2' }}>
                                 {editingId === item.id && editingType === type ? (
                                     <input
                                         type="text"
@@ -847,12 +862,13 @@
                                             >
                                                 ✏️
                                             </button>
-                                            <button
-                                                className="btn-icon"
-                                                onClick={() => excluirItem(type, item.id)}
-                                            >
-                                                🗑️
-                                            </button>
+                            <button
+                                className="btn-icon"
+                                onClick={() => excluirItem(type, item.id)}
+                                title={item.ativo ? 'Inativar' : 'Item inativo'}
+                            >
+                                {item.ativo ? '🗑️' : '↩️'}
+                            </button>
                                         </>
                                     )}
                                 </div>
@@ -897,6 +913,7 @@
                     )}
                 </div>
             );
+            };
 
             return (
                 <div className="content">
