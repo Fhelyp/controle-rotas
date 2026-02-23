@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Rotas</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        #root {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            max-width: 390px;
+            margin: 0 auto;
+            background: white;
+        }
+
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            padding-bottom: 80px;
+        }
+
+        .header {
+            padding: 16px;
+            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+            color: white;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .header h1 {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .nav-bar {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            max-width: 390px;
+            height: 70px;
+            background: white;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: 8px;
+            transition: all 0.2s;
+            color: #6b7280;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .nav-item.active {
+            color: #1e3a8a;
+            background: #eff6ff;
+        }
+
+        .nav-item:hover {
+            background: #f3f4f6;
+        }
+
+        .icon {
+            font-size: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 6px;
+            font-size: 14px;
+            color: #374151;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #1e3a8a;
+            box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .button {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .button-primary {
+            background: #1e3a8a;
+            color: white;
+            width: 100%;
+        }
+
+        .button-primary:hover {
+            background: #1e40af;
+        }
+
+        .button-primary:active {
+            transform: scale(0.98);
+        }
+
+        .button-secondary {
+            background: #e5e7eb;
+            color: #374151;
+            padding: 8px 12px;
+            font-size: 12px;
+        }
+
+        .button-secondary:hover {
+            background: #d1d5db;
+        }
+
+        .button-danger {
+            background: #ef4444;
+            color: white;
+            padding: 6px 10px;
+            font-size: 12px;
+        }
+
+        .button-danger:hover {
+            background: #dc2626;
+        }
+
+        .button-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .button-success:hover {
+            background: #059669;
+        }
+
+        .card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .card-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #1f2937;
+        }
+
+        .card-text {
+            font-size: 13px;
+            color: #6b7280;
+            margin-bottom: 4px;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 32px 16px;
+            color: #9ca3af;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .empty-state-text {
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            max-width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        .modal-header {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #1f2937;
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+            justify-content: flex-end;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+            color: white;
+            padding: 16px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            background: white;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .filter-btn.active {
+            background: #1e3a8a;
+            color: white;
+            border-color: #1e3a8a;
+        }
+
+        .filter-btn:hover {
+            border-color: #1e3a8a;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #6b7280;
+        }
+
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            font-size: 13px;
+        }
+
+        .success {
+            background: #dcfce7;
+            color: #166534;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            font-size: 13px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            margin-top: 20px;
+            color: #1f2937;
+        }
+
+        .section-title:first-child {
+            margin-top: 0;
+        }
+
+        .list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: #f9fafb;
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+
+        .list-item-text {
+            flex: 1;
+        }
+
+        .list-item-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-icon {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+            padding: 4px;
+            transition: all 0.2s;
+        }
+
+        .btn-icon:hover {
+            transform: scale(1.2);
+        }
+
+        .date-range-inputs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .date-range-inputs input {
+            flex: 1;
+        }
+
+        @media (max-width: 390px) {
+            #root {
+                max-width: 100%;
+            }
+
+            .nav-bar {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // Inicializar Supabase
+        const SUPABASE_URL = 'https://qamiorlfqcddvppihyxo.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhbWlvcmxmcWNkZHZwcGloeXhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE3OTM3NDYsImV4cCI6MjA4NzM2OTc0Nn0.FRCL_fL5IC3c0jCyDnl2FtptNQdgJlU57SA1sOd7EkI';
+
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Funções auxiliares de data
+        const formatDate = (date) => {
+            const d = new Date(date);
+            const day = String(d.getDate()).padStart(2, '0');
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const year = d.getFullYear();
+            return `${day}/${month}/${year}`;
+        };
+
+        const parseDate = (dateStr) => {
+            const [day, month, year] = dateStr.split('/');
+            return new Date(year, month - 1, day);
+        };
+
+        const getDateString = (date) => {
+            const d = new Date(date);
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
+
+        const getTodayString = () => {
+            const today = new Date();
+            return getDateString(today);
+        };
+
+        const getWeekDates = (offset = 0) => {
+            const today = new Date();
+            const dayOfWeek = today.getDay();
+            const diff = today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+            const monday = new Date(today.setDate(diff));
+            monday.setDate(monday.getDate() + offset * 7);
+            const sunday = new Date(monday);
+            sunday.setDate(sunday.getDate() + 6);
+            return {
+                start: getDateString(monday),
+                end: getDateString(sunday)
+            };
+        };
+
+        const getMonthDates = (offset = 0) => {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = today.getMonth() + offset;
+            const start = new Date(year, month, 1);
+            const end = new Date(year, month + 1, 0);
+            return {
+                start: getDateString(start),
+                end: getDateString(end)
+            };
+        };
+
+        // Componente: Página de Registro
+        function RegistroPage() {
+            const [data, setData] = useState(getTodayString());
+            const [motoristaId, setMotoristaId] = useState('');
+            const [rotaId, setRotaId] = useState('');
+            const [veiculoId, setVeiculoId] = useState('');
+            const [observacoes, setObservacoes] = useState('');
+            const [motoristas, setMotoristas] = useState([]);
+            const [rotas, setRotas] = useState([]);
+            const [veiculos, setVeiculos] = useState([]);
+            const [registros, setRegistros] = useState([]);
+            const [loading, setLoading] = useState(false);
+            const [error, setError] = useState('');
+            const [success, setSuccess] = useState('');
+
+            useEffect(() => {
+                carregarDados();
+            }, [data]);
+
+            const carregarDados = async () => {
+                setLoading(true);
+                setError('');
+                try {
+                    const [motoristasRes, rotasRes, veiculosRes, registrosRes] = await Promise.all([
+                        supabase.from('motoristas').select('*').order('nome'),
+                        supabase.from('rotas').select('*').order('nome'),
+                        supabase.from('veiculos').select('*').order('nome'),
+                        supabase
+                            .from('registros')
+                            .select(`
+                                *,
+                                motoristas(nome),
+                                rotas(nome),
+                                veiculos(nome)
+                            `)
+                            .eq('data', data)
+                            .order('criado_em', { ascending: false })
+                    ]);
+
+                    if (motoristasRes.error) throw motoristasRes.error;
+                    if (rotasRes.error) throw rotasRes.error;
+                    if (veiculosRes.error) throw veiculosRes.error;
+                    if (registrosRes.error) throw registrosRes.error;
+
+                    setMotoristas(motoristasRes.data || []);
+                    setRotas(rotasRes.data || []);
+                    setVeiculos(veiculosRes.data || []);
+                    setRegistros(registrosRes.data || []);
+                } catch (err) {
+                    setError('Erro ao carregar dados: ' + err.message);
+                }
+                setLoading(false);
+            };
+
+            const salvarRegistro = async () => {
+                if (!motoristaId || !rotaId || !veiculoId) {
+                    setError('Preencha todos os campos obrigatórios');
+                    return;
+                }
+
+                setLoading(true);
+                setError('');
+                try {
+                    const { error: err } = await supabase.from('registros').insert([
+                        {
+                            data,
+                            motorista_id: motoristaId,
+                            rota_id: rotaId,
+                            veiculo_id: veiculoId,
+                            observacoes: observacoes || null
+                        }
+                    ]);
+
+                    if (err) throw err;
+
+                    setSuccess('Registro salvo com sucesso!');
+                    setMotoristaId('');
+                    setRotaId('');
+                    setVeiculoId('');
+                    setObservacoes('');
+                    setTimeout(() => setSuccess(''), 3000);
+                    carregarDados();
+                } catch (err) {
+                    setError('Erro ao salvar: ' + err.message);
+                }
+                setLoading(false);
+            };
+
+            const excluirRegistro = async (id) => {
+                if (!confirm('Tem certeza que deseja excluir este registro?')) return;
+
+                try {
+                    const { error: err } = await supabase.from('registros').delete().eq('id', id);
+                    if (err) throw err;
+                    carregarDados();
+                } catch (err) {
+                    setError('Erro ao excluir: ' + err.message);
+                }
+            };
+
+            return (
+                <div className="content">
+                    {error && <div className="error">❌ {error}</div>}
+                    {success && <div className="success">✓ {success}</div>}
+
+                    <div className="form-group">
+                        <label>Data</label>
+                        <input
+                            type="date"
+                            value={data}
+                            onChange={(e) => setData(e.target.value)}
+                        />
+                        <small style={{ color: '#6b7280', marginTop: '4px', display: 'block' }}>
+                            {formatDate(data)}
+                        </small>
+                    </div>
+
+                    <div className="form-group">
+                        <label>Motorista *</label>
+                        <select value={motoristaId} onChange={(e) => setMotoristaId(e.target.value)}>
+                            <option value="">Selecione um motorista</option>
+                            {motoristas.map((m) => (
+                                <option key={m.id} value={m.id}>{m.nome}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="form-group">
+                        <label>Rota *</label>
+                        <select value={rotaId} onChange={(e) => setRotaId(e.target.value)}>
+                            <option value="">Selecione uma rota</option>
+                            {rotas.map((r) => (
+                                <option key={r.id} value={r.id}>{r.nome}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="form-group">
+                        <label>Veículo *</label>
+                        <select value={veiculoId} onChange={(e) => setVeiculoId(e.target.value)}>
+                            <option value="">Selecione um veículo</option>
+                            {veiculos.map((v) => (
+                                <option key={v.id} value={v.id}>{v.nome}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="form-group">
+                        <label>Observações</label>
+                        <textarea
+                            value={observacoes}
+                            onChange={(e) => setObservacoes(e.target.value)}
+                            placeholder="Anotações opcionais..."
+                        />
+                    </div>
+
+                    <button
+                        className="button button-primary"
+                        onClick={salvarRegistro}
+                        disabled={loading}
+                    >
+                        {loading ? 'Salvando...' : 'Salvar Registro'}
+                    </button>
+
+                    <div style={{ marginTop: '24px' }}>
+                        <h3 className="section-title">Registros de {formatDate(data)}</h3>
+                        {registros.length === 0 ? (
+                            <div className="empty-state">
+                                <div className="empty-state-icon">📋</div>
+                                <div className="empty-state-text">Nenhum registro para esta data</div>
+                            </div>
+                        ) : (
+                            registros.map((reg) => (
+                                <div key={reg.id} className="card">
+                                    <div className="card-title">{reg.motoristas?.nome || 'N/A'}</div>
+                                    <div className="card-text">
+                                        🛣️ {reg.rotas?.nome || 'N/A'}
+                                    </div>
+                                    <div className="card-text">
+                                        🚗 {reg.veiculos?.nome || 'N/A'}
+                                    </div>
+                                    {reg.observacoes && (
+                                        <div className="card-text">
+                                            📝 {reg.observacoes.substring(0, 50)}...
+                                        </div>
+                                    )}
+                                    <div className="card-actions">
+                                        <button
+                                            className="button button-danger"
+                                            onClick={() => excluirRegistro(reg.id)}
+                                        >
+                                            🗑️ Excluir
+                                        </button>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        // Componente: Página de Configurações
+        function ConfiguracoesPage() {
+            const [motoristas, setMotoristas] = useState([]);
+            const [rotas, setRotas] = useState([]);
+            const [veiculos, setVeiculos] = useState([]);
+            const [loading, setLoading] = useState(false);
+            const [error, setError] = useState('');
+            const [success, setSuccess] = useState('');
+            const [editingId, setEditingId] = useState(null);
+            const [editingType, setEditingType] = useState(null);
+            const [editingValue, setEditingValue] = useState('');
+            const [newValue, setNewValue] = useState('');
+            const [newType, setNewType] = useState(null);
+
+            useEffect(() => {
+                carregarDados();
+            }, []);
+
+            const carregarDados = async () => {
+                setLoading(true);
+                try {
+                    const [motoristasRes, rotasRes, veiculosRes] = await Promise.all([
+                        supabase.from('motoristas').select('*').order('nome'),
+                        supabase.from('rotas').select('*').order('nome'),
+                        supabase.from('veiculos').select('*').order('nome')
+                    ]);
+
+                    if (motoristasRes.error) throw motoristasRes.error;
+                    if (rotasRes.error) throw rotasRes.error;
+                    if (veiculosRes.error) throw veiculosRes.error;
+
+                    setMotoristas(motoristasRes.data || []);
+                    setRotas(rotasRes.data || []);
+                    setVeiculos(veiculosRes.data || []);
+                } catch (err) {
+                    setError('Erro ao carregar dados: ' + err.message);
+                }
+                setLoading(false);
+            };
+
+            const adicionarItem = async (type, value) => {
+                if (!value.trim()) {
+                    setError('Preencha o nome');
+                    return;
+                }
+
+                setLoading(true);
+                setError('');
+                try {
+                    const { error: err } = await supabase.from(type).insert([{ nome: value }]);
+                    if (err) throw err;
+                    setSuccess('Item adicionado com sucesso!');
+                    setNewValue('');
+                    setNewType(null);
+                    setTimeout(() => setSuccess(''), 3000);
+                    carregarDados();
+                } catch (err) {
+                    setError('Erro ao adicionar: ' + err.message);
+                }
+                setLoading(false);
+            };
+
+            const atualizarItem = async (type, id, value) => {
+                if (!value.trim()) {
+                    setError('Preencha o nome');
+                    return;
+                }
+
+                setLoading(true);
+                setError('');
+                try {
+                    const { error: err } = await supabase.from(type).update({ nome: value }).eq('id', id);
+                    if (err) throw err;
+                    setSuccess('Item atualizado com sucesso!');
+                    setEditingId(null);
+                    setEditingType(null);
+                    setTimeout(() => setSuccess(''), 3000);
+                    carregarDados();
+                } catch (err) {
+                    setError('Erro ao atualizar: ' + err.message);
+                }
+                setLoading(false);
+            };
+
+            const excluirItem = async (type, id) => {
+                if (!confirm('Tem certeza que deseja excluir este item?')) return;
+
+                try {
+                    const { error: err } = await supabase.from(type).delete().eq('id', id);
+                    if (err) throw err;
+                    carregarDados();
+                } catch (err) {
+                    setError('Erro ao excluir: ' + err.message);
+                }
+            };
+
+            const renderSection = (title, type, items) => (
+                <div>
+                    <h3 className="section-title">{title}</h3>
+                    {items.length === 0 ? (
+                        <div className="empty-state" style={{ padding: '16px' }}>
+                            <div className="empty-state-text">Nenhum item cadastrado</div>
+                        </div>
+                    ) : (
+                        items.map((item) => (
+                            <div key={item.id} className="list-item">
+                                {editingId === item.id && editingType === type ? (
+                                    <input
+                                        type="text"
+                                        value={editingValue}
+                                        onChange={(e) => setEditingValue(e.target.value)}
+                                        style={{ marginRight: '8px' }}
+                                    />
+                                ) : (
+                                    <div className="list-item-text">{item.nome}</div>
+                                )}
+                                <div className="list-item-actions">
+                                    {editingId === item.id && editingType === type ? (
+                                        <>
+                                            <button
+                                                className="btn-icon"
+                                                onClick={() => atualizarItem(type, item.id, editingValue)}
+                                            >
+                                                ✓
+                                            </button>
+                                            <button
+                                                className="btn-icon"
+                                                onClick={() => setEditingId(null)}
+                                            >
+                                                ✕
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <button
+                                                className="btn-icon"
+                                                onClick={() => {
+                                                    setEditingId(item.id);
+                                                    setEditingType(type);
+                                                    setEditingValue(item.nome);
+                                                }}
+                                            >
+                                                ✏️
+                                            </button>
+                                            <button
+                                                className="btn-icon"
+                                                onClick={() => excluirItem(type, item.id)}
+                                            >
+                                                🗑️
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        ))
+                    )}
+                    {newType === type ? (
+                        <div className="list-item" style={{ marginTop: '8px' }}>
+                            <input
+                                type="text"
+                                value={newValue}
+                                onChange={(e) => setNewValue(e.target.value)}
+                                placeholder="Nome do novo item"
+                                style={{ marginRight: '8px' }}
+                            />
+                            <div className="list-item-actions">
+                                <button
+                                    className="btn-icon"
+                                    onClick={() => adicionarItem(type, newValue)}
+                                >
+                                    ✓
+                                </button>
+                                <button
+                                    className="btn-icon"
+                                    onClick={() => setNewType(null)}
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <button
+                            className="button button-secondary"
+                            onClick={() => {
+                                setNewType(type);
+                                setNewValue('');
+                            }}
+                            style={{ width: '100%', marginTop: '8px' }}
+                        >
+                            + Adicionar
+                        </button>
+                    )}
+                </div>
+            );
+
+            return (
+                <div className="content">
+                    {error && <div className="error">❌ {error}</div>}
+                    {success && <div className="success">✓ {success}</div>}
+
+                    {renderSection('👤 Motoristas', 'motoristas', motoristas)}
+                    {renderSection('🚗 Veículos', 'veiculos', veiculos)}
+                    {renderSection('🛣️ Rotas', 'rotas', rotas)}
+                </div>
+            );
+        }
+
+        // Componente: Página de Relatório
+        function RelatorioPage() {
+            const [filtro, setFiltro] = useState('semana-atual');
+            const [dataInicio, setDataInicio] = useState('');
+            const [dataFim, setDataFim] = useState('');
+            const [registros, setRegistros] = useState([]);
+            const [stats, setStats] = useState({
+                total: 0,
+                motoristasUnicos: 0,
+                rotaMaisExecutada: '',
+                veiculoMaisUtilizado: ''
+            });
+            const [loading, setLoading] = useState(false);
+            const [error, setError] = useState('');
+
+            useEffect(() => {
+                carregarDados();
+            }, [filtro, dataInicio, dataFim]);
+
+            const carregarDados = async () => {
+                setLoading(true);
+                setError('');
+                try {
+                    let inicio, fim;
+
+                    if (filtro === 'semana-atual') {
+                        const dates = getWeekDates(0);
+                        inicio = dates.start;
+                        fim = dates.end;
+                    } else if (filtro === 'semana-passada') {
+                        const dates = getWeekDates(-1);
+                        inicio = dates.start;
+                        fim = dates.end;
+                    } else if (filtro === 'mes-atual') {
+                        const dates = getMonthDates(0);
+                        inicio = dates.start;
+                        fim = dates.end;
+                    } else if (filtro === 'mes-passado') {
+                        const dates = getMonthDates(-1);
+                        inicio = dates.start;
+                        fim = dates.end;
+                    } else if (filtro === 'personalizado') {
+                        if (!dataInicio || !dataFim) {
+                            setError('Selecione as datas');
+                            setLoading(false);
+                            return;
+                        }
+                        inicio = dataInicio;
+                        fim = dataFim;
+                    }
+
+                    const { data, error: err } = await supabase
+                        .from('registros')
+                        .select(`
+                            *,
+                            motoristas(nome),
+                            rotas(nome),
+                            veiculos(nome)
+                        `)
+                        .gte('data', inicio)
+                        .lte('data', fim)
+                        .order('data', { ascending: false });
+
+                    if (err) throw err;
+
+                    setRegistros(data || []);
+
+                    // Calcular estatísticas
+                    const motoristasUnicos = new Set(data?.map(r => r.motorista_id) || []).size;
+                    const rotasCount = {};
+                    const veiculosCount = {};
+
+                    data?.forEach(r => {
+                        rotasCount[r.rota_id] = (rotasCount[r.rota_id] || 0) + 1;
+                        veiculosCount[r.veiculo_id] = (veiculosCount[r.veiculo_id] || 0) + 1;
+                    });
+
+                    const rotaMaisExecutada = Object.keys(rotasCount).length > 0
+                        ? data?.find(r => r.rota_id === Object.keys(rotasCount).reduce((a, b) => rotasCount[a] > rotasCount[b] ? a : b))?.rotas?.nome || 'N/A'
+                        : 'N/A';
+
+                    const veiculoMaisUtilizado = Object.keys(veiculosCount).length > 0
+                        ? data?.find(r => r.veiculo_id === Object.keys(veiculosCount).reduce((a, b) => veiculosCount[a] > veiculosCount[b] ? a : b))?.veiculos?.nome || 'N/A'
+                        : 'N/A';
+
+                    setStats({
+                        total: data?.length || 0,
+                        motoristasUnicos,
+                        rotaMaisExecutada,
+                        veiculoMaisUtilizado
+                    });
+                } catch (err) {
+                    setError('Erro ao carregar dados: ' + err.message);
+                }
+                setLoading(false);
+            };
+
+            return (
+                <div className="content">
+                    {error && <div className="error">❌ {error}</div>}
+
+                    <div className="filter-buttons">
+                        <button
+                            className={`filter-btn ${filtro === 'semana-atual' ? 'active' : ''}`}
+                            onClick={() => setFiltro('semana-atual')}
+                        >
+                            Semana Atual
+                        </button>
+                        <button
+                            className={`filter-btn ${filtro === 'semana-passada' ? 'active' : ''}`}
+                            onClick={() => setFiltro('semana-passada')}
+                        >
+                            Semana Passada
+                        </button>
+                        <button
+                            className={`filter-btn ${filtro === 'mes-atual' ? 'active' : ''}`}
+                            onClick={() => setFiltro('mes-atual')}
+                        >
+                            Mês Atual
+                        </button>
+                        <button
+                            className={`filter-btn ${filtro === 'mes-passado' ? 'active' : ''}`}
+                            onClick={() => setFiltro('mes-passado')}
+                        >
+                            Mês Passado
+                        </button>
+                        <button
+                            className={`filter-btn ${filtro === 'personalizado' ? 'active' : ''}`}
+                            onClick={() => setFiltro('personalizado')}
+                        >
+                            Personalizado
+                        </button>
+                    </div>
+
+                    {filtro === 'personalizado' && (
+                        <div className="date-range-inputs">
+                            <input
+                                type="date"
+                                value={dataInicio}
+                                onChange={(e) => setDataInicio(e.target.value)}
+                                placeholder="Data inicial"
+                            />
+                            <input
+                                type="date"
+                                value={dataFim}
+                                onChange={(e) => setDataFim(e.target.value)}
+                                placeholder="Data final"
+                            />
+                        </div>
+                    )}
+
+                    <div className="stats-grid">
+                        <div className="stat-card">
+                            <div className="stat-value">{stats.total}</div>
+                            <div className="stat-label">Registros</div>
+                        </div>
+                        <div className="stat-card">
+                            <div className="stat-value">{stats.motoristasUnicos}</div>
+                            <div className="stat-label">Motoristas</div>
+                        </div>
+                        <div className="stat-card">
+                            <div className="stat-value" style={{ fontSize: '14px' }}>{stats.rotaMaisExecutada}</div>
+                            <div className="stat-label">Rota Mais Executada</div>
+                        </div>
+                        <div className="stat-card">
+                            <div className="stat-value" style={{ fontSize: '14px' }}>{stats.veiculoMaisUtilizado}</div>
+                            <div className="stat-label">Veículo Mais Utilizado</div>
+                        </div>
+                    </div>
+
+                    <h3 className="section-title">Registros do Período</h3>
+                    {registros.length === 0 ? (
+                        <div className="empty-state">
+                            <div className="empty-state-icon">📊</div>
+                            <div className="empty-state-text">Nenhum registro para este período</div>
+                        </div>
+                    ) : (
+                        registros.map((reg) => (
+                            <div key={reg.id} className="card">
+                                <div className="card-title">{formatDate(reg.data)}</div>
+                                <div className="card-text">👤 {reg.motoristas?.nome || 'N/A'}</div>
+                                <div className="card-text">🛣️ {reg.rotas?.nome || 'N/A'}</div>
+                                <div className="card-text">🚗 {reg.veiculos?.nome || 'N/A'}</div>
+                                {reg.observacoes && (
+                                    <div className="card-text">📝 {reg.observacoes}</div>
+                                )}
+                            </div>
+                        ))
+                    )}
+                </div>
+            );
+        }
+
+        // Componente Principal
+        function App() {
+            const [paginaAtiva, setPaginaAtiva] = useState('registro');
+
+            const renderPagina = () => {
+                switch (paginaAtiva) {
+                    case 'registro':
+                        return <RegistroPage />;
+                    case 'relatorio':
+                        return <RelatorioPage />;
+                    case 'configuracoes':
+                        return <ConfiguracoesPage />;
+                    default:
+                        return <RegistroPage />;
+                }
+            };
+
+            const getTitulo = () => {
+                switch (paginaAtiva) {
+                    case 'registro':
+                        return 'Registro';
+                    case 'relatorio':
+                        return 'Relatório';
+                    case 'configuracoes':
+                        return 'Configurações';
+                    default:
+                        return 'Controle de Rotas';
+                }
+            };
+
+            return (
+                <div className="app-container">
+                    <div className="header">
+                        <h1>{getTitulo()}</h1>
+                    </div>
+                    {renderPagina()}
+                    <div className="nav-bar">
+                        <div
+                            className={`nav-item ${paginaAtiva === 'registro' ? 'active' : ''}`}
+                            onClick={() => setPaginaAtiva('registro')}
+                        >
+                            <div className="icon">📋</div>
+                            <div>Registro</div>
+                        </div>
+                        <div
+                            className={`nav-item ${paginaAtiva === 'relatorio' ? 'active' : ''}`}
+                            onClick={() => setPaginaAtiva('relatorio')}
+                        >
+                            <div className="icon">📊</div>
+                            <div>Relatório</div>
+                        </div>
+                        <div
+                            className={`nav-item ${paginaAtiva === 'configuracoes' ? 'active' : ''}`}
+                            onClick={() => setPaginaAtiva('configuracoes')}
+                        >
+                            <div className="icon">⚙️</div>
+                            <div>Config</div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
