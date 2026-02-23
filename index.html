@@ -3,1262 +3,1415 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Controle de Rotas</title>
+    <title>Farias Transportes</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            --navy: #0f2040;
+            --navy-mid: #1a3560;
+            --orange: #f97316;
+            --orange-light: #fff3e8;
+            --orange-dark: #ea6400;
+            --gray-50: #f8fafc;
+            --gray-100: #f1f5f9;
+            --gray-200: #e2e8f0;
+            --gray-400: #94a3b8;
+            --gray-600: #475569;
+            --gray-800: #1e293b;
+            --green: #10b981;
+            --red: #ef4444;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
+            --radius: 10px;
         }
 
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: #f5f5f5;
-            color: #333;
+            font-family: 'Barlow', sans-serif;
+            background: #e8edf5;
+            color: var(--gray-800);
+            -webkit-font-smoothing: antialiased;
         }
 
         #root {
             display: flex;
             flex-direction: column;
-            height: 100vh;
-            max-width: 390px;
+            height: 100dvh;
+            max-width: 420px;
             margin: 0 auto;
-            background: white;
+            background: var(--gray-50);
+            position: relative;
+            overflow: hidden;
         }
 
-        .app-container {
+        /* ── HEADER ── */
+        .header {
+            background: var(--navy);
+            padding: 14px 16px 12px;
             display: flex;
-            flex-direction: column;
-            height: 100%;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.25);
         }
 
+        .header-logo {
+            width: 34px;
+            height: 34px;
+            background: var(--orange);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .header-text {
+            flex: 1;
+        }
+
+        .header-title {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 19px;
+            font-weight: 700;
+            color: white;
+            letter-spacing: 0.3px;
+            line-height: 1;
+        }
+
+        .header-subtitle {
+            font-size: 11px;
+            color: rgba(255,255,255,0.55);
+            font-weight: 400;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-top: 2px;
+        }
+
+        .header-page {
+            font-size: 12px;
+            color: var(--orange);
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            background: rgba(249,115,22,0.15);
+            padding: 3px 8px;
+            border-radius: 20px;
+        }
+
+        /* ── CONTENT ── */
         .content {
             flex: 1;
             overflow-y: auto;
             padding: 16px;
-            padding-bottom: 80px;
+            padding-bottom: 90px;
         }
 
-        .header {
-            padding: 16px;
-            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
-            color: white;
-            text-align: center;
-            border-bottom: 1px solid #ddd;
-        }
-
-        .header h1 {
-            font-size: 20px;
-            font-weight: 600;
-        }
-
+        /* ── NAV ── */
         .nav-bar {
-            position: fixed;
+            position: absolute;
             bottom: 0;
-            width: 100%;
-            max-width: 390px;
-            height: 70px;
+            left: 0;
+            right: 0;
+            height: 72px;
             background: white;
-            border-top: 1px solid #e5e7eb;
+            border-top: 1px solid var(--gray-200);
             display: flex;
             justify-content: space-around;
             align-items: center;
             z-index: 100;
+            box-shadow: 0 -4px 16px rgba(0,0,0,0.07);
         }
 
         .nav-item {
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            gap: 4px;
+            gap: 3px;
             cursor: pointer;
-            padding: 8px 12px;
-            border-radius: 8px;
+            padding: 8px 20px;
+            border-radius: 12px;
             transition: all 0.2s;
-            color: #6b7280;
-            font-size: 12px;
-            font-weight: 500;
+            color: var(--gray-400);
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
         }
 
         .nav-item.active {
-            color: #1e3a8a;
-            background: #eff6ff;
+            color: var(--orange);
         }
 
-        .nav-item:hover {
-            background: #f3f4f6;
+        .nav-item .nav-icon {
+            font-size: 22px;
+            line-height: 1;
         }
 
-        .icon {
-            font-size: 24px;
+        .nav-item.active .nav-icon {
+            transform: scale(1.1);
         }
 
-        .form-group {
+        /* ── DATE NAV ── */
+        .date-nav {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            background: white;
+            border: 1.5px solid var(--gray-200);
+            border-radius: var(--radius);
+            overflow: hidden;
             margin-bottom: 16px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .date-nav-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 10px 14px;
+            font-size: 18px;
+            color: var(--gray-600);
+            transition: all 0.15s;
+            flex-shrink: 0;
+        }
+
+        .date-nav-btn:hover {
+            background: var(--gray-100);
+            color: var(--navy);
+        }
+
+        .date-nav-btn:active { transform: scale(0.92); }
+
+        .date-nav-center {
+            flex: 1;
+            text-align: center;
+            padding: 0 4px;
+        }
+
+        .date-nav-main {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--navy);
+            line-height: 1;
+        }
+
+        .date-nav-sub {
+            font-size: 11px;
+            color: var(--gray-400);
+            margin-top: 2px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .date-nav-today-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 11px;
+            color: var(--orange);
+            font-weight: 700;
+            padding: 4px 10px;
+            letter-spacing: 0.3px;
+            flex-shrink: 0;
+            font-family: 'Barlow', sans-serif;
+        }
+
+        /* ── DATE INPUT HIDDEN ── */
+        .date-input-hidden {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+            width: 0;
+            height: 0;
+        }
+
+        /* ── FORMS ── */
+        .form-group {
+            margin-bottom: 14px;
         }
 
         label {
             display: block;
             font-weight: 600;
-            margin-bottom: 6px;
-            font-size: 14px;
-            color: #374151;
+            margin-bottom: 5px;
+            font-size: 13px;
+            color: var(--gray-600);
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
         }
 
-        input, select, textarea {
+        select, input, textarea {
             width: 100%;
-            padding: 10px 12px;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            font-size: 14px;
-            font-family: inherit;
-            transition: border-color 0.2s;
+            padding: 11px 13px;
+            border: 1.5px solid var(--gray-200);
+            border-radius: var(--radius);
+            font-size: 15px;
+            font-family: 'Barlow', sans-serif;
+            font-weight: 500;
+            color: var(--gray-800);
+            background: white;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            -webkit-appearance: none;
         }
 
-        input:focus, select:focus, textarea:focus {
-            outline: none;
-            border-color: #1e3a8a;
-            box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
+        select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 36px;
+            cursor: pointer;
         }
+
+        select:focus, input:focus, textarea:focus {
+            outline: none;
+            border-color: var(--orange);
+            box-shadow: 0 0 0 3px rgba(249,115,22,0.12);
+        }
+
+        select option[value=""] { color: var(--gray-400); }
 
         textarea {
             resize: vertical;
-            min-height: 80px;
-        }
-
-        .button {
-            padding: 10px 16px;
-            border: none;
-            border-radius: 6px;
+            min-height: 76px;
             font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
         }
 
-        .button-primary {
-            background: #1e3a8a;
+        /* ── BUTTONS ── */
+        .btn {
+            padding: 12px 18px;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 15px;
+            font-weight: 700;
+            font-family: 'Barlow', sans-serif;
+            cursor: pointer;
+            transition: all 0.18s;
+            letter-spacing: 0.2px;
+        }
+
+        .btn-primary {
+            background: var(--orange);
             color: white;
             width: 100%;
+            box-shadow: 0 4px 12px rgba(249,115,22,0.3);
         }
 
-        .button-primary:hover {
-            background: #1e40af;
-        }
+        .btn-primary:hover { background: var(--orange-dark); }
+        .btn-primary:active { transform: scale(0.97); }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
 
-        .button-primary:active {
-            transform: scale(0.98);
-        }
-
-        .button-secondary {
-            background: #e5e7eb;
-            color: #374151;
-            padding: 8px 12px;
-            font-size: 12px;
-        }
-
-        .button-secondary:hover {
-            background: #d1d5db;
-        }
-
-        .button-danger {
-            background: #ef4444;
-            color: white;
-            padding: 6px 10px;
-            font-size: 12px;
-        }
-
-        .button-danger:hover {
-            background: #dc2626;
-        }
-
-        .button-success {
-            background: #10b981;
-            color: white;
-        }
-
-        .button-success:hover {
-            background: #059669;
-        }
-
-        .card {
-            background: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 12px;
-        }
-
-        .card-title {
-            font-weight: 600;
-            margin-bottom: 8px;
-            color: #1f2937;
-        }
-
-        .card-text {
-            font-size: 13px;
-            color: #6b7280;
-            margin-bottom: 4px;
-        }
-
-        .card-actions {
-            display: flex;
-            gap: 8px;
-            margin-top: 8px;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 32px 16px;
-            color: #9ca3af;
-        }
-
-        .empty-state-icon {
-            font-size: 48px;
-            margin-bottom: 16px;
-        }
-
-        .empty-state-text {
+        .btn-secondary {
+            background: var(--gray-100);
+            color: var(--gray-600);
             font-size: 14px;
-            line-height: 1.5;
+            padding: 10px 14px;
         }
 
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 200;
-            align-items: center;
-            justify-content: center;
-        }
+        .btn-secondary:hover { background: var(--gray-200); }
 
-        .modal.active {
-            display: flex;
-        }
-
-        .modal-content {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            max-width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-        }
-
-        .modal-header {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 16px;
-            color: #1f2937;
-        }
-
-        .modal-footer {
-            display: flex;
-            gap: 8px;
-            margin-top: 16px;
-            justify-content: flex-end;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-
-        .stat-card {
-            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
-            color: white;
-            padding: 16px;
-            border-radius: 8px;
-            text-align: center;
-        }
-
-        .stat-value {
-            font-size: 28px;
-            font-weight: 700;
-            margin-bottom: 4px;
-        }
-
-        .stat-label {
-            font-size: 12px;
-            opacity: 0.9;
-        }
-
-        .filter-buttons {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 16px;
-            flex-wrap: wrap;
-        }
-
-        .filter-btn {
-            padding: 8px 12px;
-            border: 1px solid #d1d5db;
-            background: white;
-            border-radius: 6px;
-            font-size: 12px;
-            cursor: pointer;
-            transition: all 0.2s;
-            white-space: nowrap;
-        }
-
-        .filter-btn.active {
-            background: #1e3a8a;
-            color: white;
-            border-color: #1e3a8a;
-        }
-
-        .filter-btn:hover {
-            border-color: #1e3a8a;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 20px;
-            color: #6b7280;
-        }
-
-        .error {
+        .btn-danger {
             background: #fee2e2;
-            color: #991b1b;
-            padding: 12px;
-            border-radius: 6px;
-            margin-bottom: 16px;
+            color: var(--red);
             font-size: 13px;
+            padding: 7px 11px;
         }
 
-        .success {
-            background: #dcfce7;
-            color: #166534;
-            padding: 12px;
-            border-radius: 6px;
-            margin-bottom: 16px;
+        .btn-danger:hover { background: #fecaca; }
+
+        .btn-ghost {
+            background: none;
+            border: 1.5px solid var(--gray-200);
+            color: var(--gray-600);
             font-size: 13px;
+            padding: 7px 11px;
         }
 
-        .section-title {
-            font-size: 16px;
-            font-weight: 600;
-            margin-bottom: 12px;
-            margin-top: 20px;
-            color: #1f2937;
-        }
-
-        .section-title:first-child {
-            margin-top: 0;
-        }
-
-        .list-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px;
-            background: #f9fafb;
-            border-radius: 6px;
-            margin-bottom: 8px;
-        }
-
-        .list-item-text {
-            flex: 1;
-        }
-
-        .list-item-actions {
-            display: flex;
-            gap: 8px;
-        }
+        .btn-ghost:hover { border-color: var(--gray-400); }
 
         .btn-icon {
             background: none;
             border: none;
             cursor: pointer;
             font-size: 18px;
-            padding: 4px;
-            transition: all 0.2s;
+            padding: 6px;
+            transition: transform 0.15s;
+            line-height: 1;
         }
 
-        .btn-icon:hover {
-            transform: scale(1.2);
+        .btn-icon:hover { transform: scale(1.2); }
+
+        /* ── CARDS ── */
+        .card {
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius);
+            padding: 14px;
+            margin-bottom: 10px;
+            box-shadow: var(--shadow-sm);
+            transition: box-shadow 0.2s;
         }
 
-        .date-range-inputs {
+        .card:hover { box-shadow: var(--shadow-md); }
+
+        .card-header {
             display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .card-driver {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--navy);
+        }
+
+        .card-date-badge {
+            font-size: 11px;
+            font-weight: 700;
+            color: white;
+            background: var(--navy);
+            padding: 3px 8px;
+            border-radius: 20px;
+            letter-spacing: 0.3px;
+        }
+
+        .card-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .card-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: var(--gray-600);
+        }
+
+        .card-row-icon { font-size: 14px; }
+
+        .card-obs {
+            margin-top: 8px;
+            padding: 8px 10px;
+            background: var(--gray-50);
+            border-radius: 6px;
+            font-size: 12px;
+            color: var(--gray-600);
+            border-left: 3px solid var(--orange);
+            line-height: 1.4;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 6px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid var(--gray-100);
+        }
+
+        /* ── ALERTS ── */
+        .alert {
+            padding: 12px 14px;
+            border-radius: var(--radius);
+            margin-bottom: 14px;
+            font-size: 13px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .alert-error { background: #fee2e2; color: #991b1b; }
+        .alert-success { background: #dcfce7; color: #166534; }
+        .alert-warning {
+            background: #fef3c7;
+            border: 1px solid #fcd34d;
+            color: #92400e;
+        }
+
+        /* ── EMPTY STATE ── */
+        .empty {
+            text-align: center;
+            padding: 40px 16px;
+            color: var(--gray-400);
+        }
+
+        .empty-icon { font-size: 44px; margin-bottom: 12px; }
+
+        .empty-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--gray-600);
+            margin-bottom: 4px;
+        }
+
+        .empty-text { font-size: 13px; line-height: 1.5; }
+
+        /* ── STATS GRID ── */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius);
+            padding: 14px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .stat-card.highlight {
+            background: var(--navy);
+            border-color: var(--navy);
+            color: white;
+        }
+
+        .stat-value {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 32px;
+            font-weight: 700;
+            line-height: 1;
+            color: var(--navy);
+        }
+
+        .stat-card.highlight .stat-value { color: var(--orange); }
+
+        .stat-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--gray-400);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 4px;
+        }
+
+        .stat-card.highlight .stat-label { color: rgba(255,255,255,0.55); }
+
+        .stat-value-sm {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--navy);
+            line-height: 1.3;
+            margin-top: 2px;
+        }
+
+        .stat-card.highlight .stat-value-sm { color: white; }
+
+        /* ── FILTER PILLS ── */
+        .filter-pills {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 16px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+
+        .filter-pills::-webkit-scrollbar { display: none; }
+
+        .pill {
+            padding: 7px 14px;
+            border: 1.5px solid var(--gray-200);
+            background: white;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s;
+            white-space: nowrap;
+            font-family: 'Barlow', sans-serif;
+            color: var(--gray-600);
+        }
+
+        .pill.active {
+            background: var(--navy);
+            color: white;
+            border-color: var(--navy);
+        }
+
+        .pill:hover:not(.active) { border-color: var(--navy); color: var(--navy); }
+
+        /* ── DATE RANGE ── */
+        .date-range {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             gap: 8px;
             margin-bottom: 16px;
         }
 
-        .date-range-inputs input {
-            flex: 1;
+        /* ── SECTION TITLE ── */
+        .section-title {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--navy);
+            letter-spacing: 0.3px;
+            margin: 20px 0 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
 
-        @media (max-width: 390px) {
-            #root {
-                max-width: 100%;
-            }
+        .section-title:first-child { margin-top: 0; }
 
-            .nav-bar {
-                max-width: 100%;
-            }
+        .section-count {
+            font-size: 12px;
+            background: var(--orange-light);
+            color: var(--orange-dark);
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 20px;
+        }
+
+        /* ── LIST ITEM (settings) ── */
+        .list-item {
+            display: flex;
+            align-items: center;
+            padding: 11px 12px;
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+            margin-bottom: 6px;
+            gap: 10px;
+            transition: opacity 0.2s;
+        }
+
+        .list-item.inactive {
+            opacity: 0.5;
+            background: var(--gray-50);
+        }
+
+        .list-item-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .list-item-dot.active { background: var(--green); }
+        .list-item-dot.inactive { background: var(--gray-400); }
+
+        .list-item-text {
+            flex: 1;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--gray-800);
+        }
+
+        .list-item-actions { display: flex; gap: 4px; }
+
+        .list-item-input {
+            flex: 1;
+            padding: 6px 10px !important;
+            font-size: 14px !important;
+        }
+
+        /* ── MODAL (custom confirm) ── */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(15,32,64,0.5);
+            z-index: 300;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .modal-sheet {
+            background: white;
+            border-radius: 18px 18px 0 0;
+            padding: 24px 20px 36px;
+            width: 100%;
+            max-width: 420px;
+            animation: slideUp 0.25s ease;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--navy);
+            margin-bottom: 8px;
+        }
+
+        .modal-text {
+            font-size: 14px;
+            color: var(--gray-600);
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .modal-actions .btn { flex: 1; }
+
+        /* ── EDITING BANNER ── */
+        .editing-banner {
+            background: var(--orange-light);
+            border: 1.5px solid var(--orange);
+            border-radius: var(--radius);
+            padding: 11px 13px;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--orange-dark);
+            font-weight: 600;
+        }
+
+        /* ── LOADING ── */
+        .loading {
+            text-align: center;
+            padding: 32px;
+            color: var(--gray-400);
+            font-size: 14px;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            border: 3px solid var(--gray-200);
+            border-top-color: var(--orange);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            margin-bottom: 10px;
+        }
+
+        /* ── GROUP HEADER (relatório) ── */
+        .group-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 0 6px;
+            margin-top: 12px;
+        }
+
+        .group-header:first-child { margin-top: 0; }
+
+        .group-label {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--gray-600);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .group-line {
+            flex: 1;
+            height: 1px;
+            background: var(--gray-200);
+        }
+
+        .group-badge {
+            font-size: 11px;
+            font-weight: 700;
+            background: var(--gray-100);
+            color: var(--gray-600);
+            padding: 2px 8px;
+            border-radius: 20px;
+        }
+
+        /* ── DIVIDER ── */
+        .divider {
+            height: 1px;
+            background: var(--gray-200);
+            margin: 20px 0;
+        }
+
+        /* ── ADD ITEM ROW ── */
+        .add-item-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 6px;
+        }
+
+        .add-item-row input { margin-bottom: 0; }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(60px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        @media (max-width: 420px) {
+            #root { max-width: 100%; }
         }
     </style>
 </head>
 <body>
-    <div id="root"></div>
+<div id="root"></div>
 
-    <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
 
-        // Inicializar Supabase
-        const SUPABASE_URL = 'https://qamiorlfqcddvppihyxo.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhbWlvcmxmcWNkZHZwcGloeXhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE3OTM3NDYsImV4cCI6MjA4NzM2OTc0Nn0.FRCL_fL5IC3c0jCyDnl2FtptNQdgJlU57SA1sOd7EkI';
+const SUPABASE_URL = 'https://qamiorlfqcddvppihyxo.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhbWlvcmxmcWNkZHZwcGloeXhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE3OTM3NDYsImV4cCI6MjA4NzM2OTc0Nn0.FRCL_fL5IC3c0jCyDnl2FtptNQdgJlU57SA1sOd7EkI';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+/* ── Date helpers ── */
+const getTodayString = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+};
 
-        // Funções auxiliares de data - usando horário local
-        const formatDate = (dateStr) => {
-            // dateStr vem no formato YYYY-MM-DD
-            const [year, month, day] = dateStr.split('-');
-            return `${day}/${month}/${year}`;
-        };
+const formatDate = (str) => {
+    if (!str) return '';
+    const [y,m,d] = str.split('-');
+    return `${d}/${m}/${y}`;
+};
 
-        const parseDate = (dateStr) => {
-            const [day, month, year] = dateStr.split('/');
-            return new Date(year, month - 1, day);
-        };
+const formatDateFull = (str) => {
+    if (!str) return '';
+    const [y,m,day] = str.split('-');
+    const date = new Date(+y, +m-1, +day);
+    const weekdays = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    const months = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    return `${weekdays[date.getDay()]}, ${+day} ${months[+m-1]}`;
+};
 
-        const getDateString = (date) => {
-            // Garante que usa a data local, não UTC
-            let d;
-            if (typeof date === 'string') {
-                d = new Date(date + 'T00:00:00');
-            } else {
-                d = new Date(date);
-            }
-            const year = d.getFullYear();
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-        };
+const isToday = (str) => str === getTodayString();
 
-        const getTodayString = () => {
-            // Pega a data local atual
-            const today = new Date();
-            const year = today.getFullYear();
-            const month = String(today.getMonth() + 1).padStart(2, '0');
-            const day = String(today.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-        };
+const addDays = (str, n) => {
+    const [y,m,d] = str.split('-').map(Number);
+    const date = new Date(y, m-1, d);
+    date.setDate(date.getDate() + n);
+    return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+};
 
-        const getWeekDates = (offset = 0) => {
-            const today = new Date();
-            const dayOfWeek = today.getDay();
-            const diff = today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
-            const monday = new Date(today.getFullYear(), today.getMonth(), diff);
-            monday.setDate(monday.getDate() + offset * 7);
-            const sunday = new Date(monday);
-            sunday.setDate(sunday.getDate() + 6);
-            
-            const year1 = monday.getFullYear();
-            const month1 = String(monday.getMonth() + 1).padStart(2, '0');
-            const day1 = String(monday.getDate()).padStart(2, '0');
-            const start = `${year1}-${month1}-${day1}`;
-            
-            const year2 = sunday.getFullYear();
-            const month2 = String(sunday.getMonth() + 1).padStart(2, '0');
-            const day2 = String(sunday.getDate()).padStart(2, '0');
-            const end = `${year2}-${month2}-${day2}`;
-            
-            return { start, end };
-        };
+const getWeekDates = (offset=0) => {
+    const today = new Date();
+    const dow = today.getDay();
+    const diff = today.getDate() - dow + (dow===0?-6:1);
+    const mon = new Date(today.getFullYear(), today.getMonth(), diff + offset*7);
+    const sun = new Date(mon); sun.setDate(sun.getDate()+6);
+    const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    return { start: fmt(mon), end: fmt(sun) };
+};
 
-        const getMonthDates = (offset = 0) => {
-            const today = new Date();
-            const year = today.getFullYear();
-            const month = today.getMonth() + offset;
-            const start = new Date(year, month, 1);
-            const end = new Date(year, month + 1, 0);
-            
-            const year1 = start.getFullYear();
-            const month1 = String(start.getMonth() + 1).padStart(2, '0');
-            const day1 = String(start.getDate()).padStart(2, '0');
-            const startStr = `${year1}-${month1}-${day1}`;
-            
-            const year2 = end.getFullYear();
-            const month2 = String(end.getMonth() + 1).padStart(2, '0');
-            const day2 = String(end.getDate()).padStart(2, '0');
-            const endStr = `${year2}-${month2}-${day2}`;
-            
-            return { start: startStr, end: endStr };
-        };
+const getMonthDates = (offset=0) => {
+    const today = new Date();
+    const start = new Date(today.getFullYear(), today.getMonth()+offset, 1);
+    const end   = new Date(today.getFullYear(), today.getMonth()+offset+1, 0);
+    const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    return { start: fmt(start), end: fmt(end) };
+};
 
-        // Componente: Página de Registro
-        function RegistroPage() {
-            const [data, setData] = useState(getTodayString());
-            const [motoristaId, setMotoristaId] = useState('');
-            const [rotaId, setRotaId] = useState('');
-            const [veiculoId, setVeiculoId] = useState('');
-            const [observacoes, setObservacoes] = useState('');
-            const [motoristas, setMotoristas] = useState([]);
-            const [rotas, setRotas] = useState([]);
-            const [veiculos, setVeiculos] = useState([]);
-            const [registros, setRegistros] = useState([]);
-            const [loading, setLoading] = useState(false);
-            const [error, setError] = useState('');
-            const [success, setSuccess] = useState('');
-            const [editandoId, setEditandoId] = useState(null);
-
-            useEffect(() => {
-                carregarDados();
-            }, [data]);
-
-            const carregarDados = async () => {
-                setLoading(true);
-                setError('');
-                try {
-                    const [motoristasRes, rotasRes, veiculosRes, registrosRes] = await Promise.all([
-                        supabase.from('motoristas').select('*').eq('ativo', true).order('nome'),
-                        supabase.from('rotas').select('*').eq('ativo', true).order('nome'),
-                        supabase.from('veiculos').select('*').eq('ativo', true).order('nome'),
-                        supabase
-                            .from('registros')
-                            .select(`
-                                *,
-                                motoristas(nome),
-                                rotas(nome),
-                                veiculos(nome)
-                            `)
-                            .eq('data', data)
-                            .order('criado_em', { ascending: false })
-                    ]);
-
-                    if (motoristasRes.error) throw motoristasRes.error;
-                    if (rotasRes.error) throw rotasRes.error;
-                    if (veiculosRes.error) throw veiculosRes.error;
-                    if (registrosRes.error) throw registrosRes.error;
-
-                    setMotoristas(motoristasRes.data || []);
-                    setRotas(rotasRes.data || []);
-                    setVeiculos(veiculosRes.data || []);
-                    setRegistros(registrosRes.data || []);
-                } catch (err) {
-                    setError('Erro ao carregar dados: ' + err.message);
-                }
-                setLoading(false);
-            };
-
-            const salvarRegistro = async () => {
-                if (!motoristaId || !rotaId || !veiculoId) {
-                    setError('Preencha todos os campos obrigatórios');
-                    return;
-                }
-
-                setLoading(true);
-                setError('');
-                try {
-                    if (editandoId) {
-                        // Atualizar registro existente
-                        const { error: err } = await supabase.from('registros').update({
-                            data,
-                            motorista_id: motoristaId,
-                            rota_id: rotaId,
-                            veiculo_id: veiculoId,
-                            observacoes: observacoes || null
-                        }).eq('id', editandoId);
-
-                        if (err) throw err;
-                        setSuccess('Registro atualizado com sucesso!');
-                        setEditandoId(null);
-                    } else {
-                        // Criar novo registro
-                        const { error: err } = await supabase.from('registros').insert([
-                            {
-                                data,
-                                motorista_id: motoristaId,
-                                rota_id: rotaId,
-                                veiculo_id: veiculoId,
-                                observacoes: observacoes || null
-                            }
-                        ]);
-
-                        if (err) throw err;
-                        setSuccess('Registro salvo com sucesso!');
-                    }
-
-                    setMotoristaId('');
-                    setRotaId('');
-                    setVeiculoId('');
-                    setObservacoes('');
-                    setTimeout(() => setSuccess(''), 3000);
-                    carregarDados();
-                } catch (err) {
-                    setError('Erro ao salvar: ' + err.message);
-                }
-                setLoading(false);
-            };
-
-            const editarRegistro = (reg) => {
-                setEditandoId(reg.id);
-                setData(reg.data);
-                setMotoristaId(reg.motorista_id);
-                setRotaId(reg.rota_id);
-                setVeiculoId(reg.veiculo_id);
-                setObservacoes(reg.observacoes || '');
-                window.scrollTo(0, 0);
-            };
-
-            const cancelarEdicao = () => {
-                setEditandoId(null);
-                setMotoristaId('');
-                setRotaId('');
-                setVeiculoId('');
-                setObservacoes('');
-                setData(getTodayString());
-            };
-
-            const excluirRegistro = async (id) => {
-                if (!confirm('Tem certeza que deseja excluir este registro?')) return;
-
-                try {
-                    const { error: err } = await supabase.from('registros').delete().eq('id', id);
-                    if (err) throw err;
-                    setSuccess('Registro excluído com sucesso!');
-                    setTimeout(() => setSuccess(''), 3000);
-                    carregarDados();
-                } catch (err) {
-                    setError('Erro ao excluir: ' + err.message);
-                }
-            };
-
-            return (
-                <div className="content">
-                    {error && <div className="error">❌ {error}</div>}
-                    {success && <div className="success">✓ {success}</div>}
-
-                    <div className="form-group">
-                        <label>Data</label>
-                        <input
-                            type="date"
-                            value={data}
-                            onChange={(e) => setData(e.target.value)}
-                        />
-                        <small style={{ color: '#6b7280', marginTop: '4px', display: 'block' }}>
-                            {formatDate(data)}
-                        </small>
-                    </div>
-
-                    <div className="form-group">
-                        <label>Motorista *</label>
-                        <select value={motoristaId} onChange={(e) => setMotoristaId(e.target.value)}>
-                            <option value="">Selecione um motorista</option>
-                            {motoristas.map((m) => (
-                                <option key={m.id} value={m.id}>{m.nome}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="form-group">
-                        <label>Rota *</label>
-                        <select value={rotaId} onChange={(e) => setRotaId(e.target.value)}>
-                            <option value="">Selecione uma rota</option>
-                            {rotas.map((r) => (
-                                <option key={r.id} value={r.id}>{r.nome}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="form-group">
-                        <label>Veículo *</label>
-                        <select value={veiculoId} onChange={(e) => setVeiculoId(e.target.value)}>
-                            <option value="">Selecione um veículo</option>
-                            {veiculos.map((v) => (
-                                <option key={v.id} value={v.id}>{v.nome}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="form-group">
-                        <label>Observações</label>
-                        <textarea
-                            value={observacoes}
-                            onChange={(e) => setObservacoes(e.target.value)}
-                            placeholder="Anotações opcionais..."
-                        />
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                        <button
-                            className="button button-primary"
-                            onClick={salvarRegistro}
-                            disabled={loading}
-                            style={{ flex: 1 }}
-                        >
-                            {loading ? 'Salvando...' : editandoId ? 'Atualizar Registro' : 'Salvar Registro'}
-                        </button>
-                        {editandoId && (
-                            <button
-                                className="button button-secondary"
-                                onClick={cancelarEdicao}
-                                style={{ flex: 1 }}
-                            >
-                                Cancelar
-                            </button>
-                        )}
-                    </div>
-
-                    {editandoId && (
-                        <div style={{
-                            background: '#fef3c7',
-                            border: '1px solid #fcd34d',
-                            color: '#92400e',
-                            padding: '12px',
-                            borderRadius: '6px',
-                            marginTop: '12px',
-                            fontSize: '13px'
-                        }}>
-                            ✍️ Você está editando um registro. Clique em "Atualizar Registro" para salvar as mudanças.
-                        </div>
-                    )}
-
-                    <div style={{ marginTop: '24px' }}>
-                        <h3 className="section-title">Registros de {formatDate(data)}</h3>
-                        {registros.length === 0 ? (
-                            <div className="empty-state">
-                                <div className="empty-state-icon">📋</div>
-                                <div className="empty-state-text">Nenhum registro para esta data</div>
-                            </div>
-                        ) : (
-                            registros.map((reg) => (
-                                <div key={reg.id} className="card">
-                                    <div className="card-title">{reg.motoristas?.nome || 'N/A'}</div>
-                                    <div className="card-text">
-                                        🛣️ {reg.rotas?.nome || 'N/A'}
-                                    </div>
-                                    <div className="card-text">
-                                        🚗 {reg.veiculos?.nome || 'N/A'}
-                                    </div>
-                                    {reg.observacoes && (
-                                        <div className="card-text">
-                                            📝 {reg.observacoes.substring(0, 50)}...
-                                        </div>
-                                    )}
-                                    <div className="card-actions">
-                                        <button
-                                            className="button button-secondary"
-                                            onClick={() => editarRegistro(reg)}
-                                        >
-                                            ✍️ Editar
-                                        </button>
-                                        <button
-                                            className="button button-danger"
-                                            onClick={() => excluirRegistro(reg.id)}
-                                        >
-                                            🗑️ Excluir
-                                        </button>
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
+/* ── Modal de confirmação ── */
+function ConfirmModal({ isOpen, title, text, confirmLabel='Confirmar', confirmClass='btn-danger', onConfirm, onCancel }) {
+    if (!isOpen) return null;
+    return (
+        <div className="modal-backdrop" onClick={onCancel}>
+            <div className="modal-sheet" onClick={e => e.stopPropagation()}>
+                <div className="modal-title">{title}</div>
+                <div className="modal-text">{text}</div>
+                <div className="modal-actions">
+                    <button className={`btn btn-secondary`} onClick={onCancel}>Cancelar</button>
+                    <button className={`btn ${confirmClass}`} onClick={onConfirm}>{confirmLabel}</button>
                 </div>
-            );
+            </div>
+        </div>
+    );
+}
+
+/* ══════════════════════════════════════════
+   PÁGINA: REGISTRO
+═══════════════════════════════════════════ */
+function RegistroPage() {
+    const [data, setData] = useState(getTodayString());
+    const [motoristaId, setMotoristaId] = useState('');
+    const [rotaId, setRotaId] = useState('');
+    const [veiculoId, setVeiculoId] = useState('');
+    const [observacoes, setObservacoes] = useState('');
+    const [motoristas, setMotoristas] = useState([]);
+    const [rotas, setRotas] = useState([]);
+    const [veiculos, setVeiculos] = useState([]);
+    const [registros, setRegistros] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
+    const [editandoId, setEditandoId] = useState(null);
+    const [confirmModal, setConfirmModal] = useState(null);
+    const dateInputRef = useRef(null);
+
+    useEffect(() => { carregarBase(); }, []);
+    useEffect(() => { carregarRegistros(); }, [data]);
+
+    const carregarBase = async () => {
+        const [mr, rr, vr] = await Promise.all([
+            supabase.from('motoristas').select('*').eq('ativo',true).order('nome'),
+            supabase.from('rotas').select('*').eq('ativo',true).order('nome'),
+            supabase.from('veiculos').select('*').eq('ativo',true).order('nome'),
+        ]);
+        setMotoristas(mr.data||[]);
+        setRotas(rr.data||[]);
+        setVeiculos(vr.data||[]);
+    };
+
+    const carregarRegistros = async () => {
+        setLoading(true);
+        const { data: rows, error: err } = await supabase
+            .from('registros')
+            .select('*, motoristas(nome), rotas(nome), veiculos(nome)')
+            .eq('data', data)
+            .order('criado_em', { ascending: false });
+        if (!err) setRegistros(rows||[]);
+        setLoading(false);
+    };
+
+    const limparForm = () => {
+        setMotoristaId(''); setRotaId(''); setVeiculoId(''); setObservacoes('');
+        setEditandoId(null);
+    };
+
+    const salvar = async () => {
+        if (!motoristaId || !rotaId || !veiculoId) {
+            setError('Preencha motorista, rota e veículo'); return;
         }
-
-        // Componente: Página de Configurações
-        function ConfiguracoesPage() {
-            const [motoristas, setMotoristas] = useState([]);
-            const [rotas, setRotas] = useState([]);
-            const [veiculos, setVeiculos] = useState([]);
-            const [loading, setLoading] = useState(false);
-            const [error, setError] = useState('');
-            const [success, setSuccess] = useState('');
-            const [editingId, setEditingId] = useState(null);
-            const [editingType, setEditingType] = useState(null);
-            const [editingValue, setEditingValue] = useState('');
-            const [newValue, setNewValue] = useState('');
-            const [newType, setNewType] = useState(null);
-
-            useEffect(() => {
-                carregarDados();
-            }, []);
-
-            const carregarDados = async () => {
-                setLoading(true);
-                try {
-                    const [motoristasRes, rotasRes, veiculosRes] = await Promise.all([
-                        supabase.from('motoristas').select('*').order('nome'),
-                        supabase.from('rotas').select('*').order('nome'),
-                        supabase.from('veiculos').select('*').order('nome')
-                    ]);
-
-                    if (motoristasRes.error) throw motoristasRes.error;
-                    if (rotasRes.error) throw rotasRes.error;
-                    if (veiculosRes.error) throw veiculosRes.error;
-
-                    setMotoristas(motoristasRes.data || []);
-                    setRotas(rotasRes.data || []);
-                    setVeiculos(veiculosRes.data || []);
-                } catch (err) {
-                    setError('Erro ao carregar dados: ' + err.message);
-                }
-                setLoading(false);
-            };
-
-            const adicionarItem = async (type, value) => {
-                if (!value.trim()) {
-                    setError('Preencha o nome');
-                    return;
-                }
-
-                setLoading(true);
-                setError('');
-                try {
-                    const { error: err } = await supabase.from(type).insert([{ nome: value }]);
-                    if (err) throw err;
-                    setSuccess('Item adicionado com sucesso!');
-                    setNewValue('');
-                    setNewType(null);
-                    setTimeout(() => setSuccess(''), 3000);
-                    carregarDados();
-                } catch (err) {
-                    setError('Erro ao adicionar: ' + err.message);
-                }
-                setLoading(false);
-            };
-
-            const atualizarItem = async (type, id, value) => {
-                if (!value.trim()) {
-                    setError('Preencha o nome');
-                    return;
-                }
-
-                setLoading(true);
-                setError('');
-                try {
-                    const { error: err } = await supabase.from(type).update({ nome: value }).eq('id', id);
-                    if (err) throw err;
-                    setSuccess('Item atualizado com sucesso!');
-                    setEditingId(null);
-                    setEditingType(null);
-                    setTimeout(() => setSuccess(''), 3000);
-                    carregarDados();
-                } catch (err) {
-                    setError('Erro ao atualizar: ' + err.message);
-                }
-                setLoading(false);
-            };
-
-            const excluirItem = async (type, id) => {
-                if (!confirm('Tem certeza que deseja inativar este item? Os registros históricos serão preservados.')) return;
-
-                try {
-                    const { error: err } = await supabase.from(type).update({ ativo: false }).eq('id', id);
-                    if (err) throw err;
-                    setSuccess('Item inativado com sucesso! Os registros históricos foram preservados.');
-                    setTimeout(() => setSuccess(''), 3000);
-                    carregarDados();
-                } catch (err) {
-                    setError('Erro ao inativar: ' + err.message);
-                }
-            };
-
-            const renderSection = (title, type, items) => {
-                // Carregar TODOS os itens (ativos e inativos) para exibição
-                const [allItems, setAllItems] = React.useState([]);
-                React.useEffect(() => {
-                    const loadAll = async () => {
-                        const { data } = await supabase.from(type).select('*').order('nome');
-                        setAllItems(data || []);
-                    };
-                    loadAll();
-                }, [type]);
-
-                return (
-                <div>
-                    <h3 className="section-title">{title}</h3>
-                    {allItems.length === 0 ? (
-                        <div className="empty-state" style={{ padding: '16px' }}>
-                            <div className="empty-state-text">Nenhum item cadastrado</div>
-                        </div>
-                    ) : (
-                        allItems.map((item) => (
-                            <div key={item.id} className="list-item" style={{ opacity: item.ativo ? 1 : 0.5, backgroundColor: item.ativo ? '#f9fafb' : '#fef2f2' }}>
-                                {editingId === item.id && editingType === type ? (
-                                    <input
-                                        type="text"
-                                        value={editingValue}
-                                        onChange={(e) => setEditingValue(e.target.value)}
-                                        style={{ marginRight: '8px' }}
-                                    />
-                                ) : (
-                                    <div className="list-item-text">{item.nome}</div>
-                                )}
-                                <div className="list-item-actions">
-                                    {editingId === item.id && editingType === type ? (
-                                        <>
-                                            <button
-                                                className="btn-icon"
-                                                onClick={() => atualizarItem(type, item.id, editingValue)}
-                                            >
-                                                ✓
-                                            </button>
-                                            <button
-                                                className="btn-icon"
-                                                onClick={() => setEditingId(null)}
-                                            >
-                                                ✕
-                                            </button>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <button
-                                                className="btn-icon"
-                                                onClick={() => {
-                                                    setEditingId(item.id);
-                                                    setEditingType(type);
-                                                    setEditingValue(item.nome);
-                                                }}
-                                            >
-                                                ✏️
-                                            </button>
-                            <button
-                                className="btn-icon"
-                                onClick={() => excluirItem(type, item.id)}
-                                title={item.ativo ? 'Inativar' : 'Item inativo'}
-                            >
-                                {item.ativo ? '🗑️' : '↩️'}
-                            </button>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-                        ))
-                    )}
-                    {newType === type ? (
-                        <div className="list-item" style={{ marginTop: '8px' }}>
-                            <input
-                                type="text"
-                                value={newValue}
-                                onChange={(e) => setNewValue(e.target.value)}
-                                placeholder="Nome do novo item"
-                                style={{ marginRight: '8px' }}
-                            />
-                            <div className="list-item-actions">
-                                <button
-                                    className="btn-icon"
-                                    onClick={() => adicionarItem(type, newValue)}
-                                >
-                                    ✓
-                                </button>
-                                <button
-                                    className="btn-icon"
-                                    onClick={() => setNewType(null)}
-                                >
-                                    ✕
-                                </button>
-                            </div>
-                        </div>
-                    ) : (
-                        <button
-                            className="button button-secondary"
-                            onClick={() => {
-                                setNewType(type);
-                                setNewValue('');
-                            }}
-                            style={{ width: '100%', marginTop: '8px' }}
-                        >
-                            + Adicionar
-                        </button>
-                    )}
-                </div>
-            );
-            };
-
-            return (
-                <div className="content">
-                    {error && <div className="error">❌ {error}</div>}
-                    {success && <div className="success">✓ {success}</div>}
-
-                    {renderSection('👤 Motoristas', 'motoristas', motoristas)}
-                    {renderSection('🚗 Veículos', 'veiculos', veiculos)}
-                    {renderSection('🛣️ Rotas', 'rotas', rotas)}
-                </div>
-            );
+        setSaving(true); setError('');
+        const payload = { data, motorista_id: motoristaId, rota_id: rotaId, veiculo_id: veiculoId, observacoes: observacoes||null };
+        const { error: err } = editandoId
+            ? await supabase.from('registros').update(payload).eq('id', editandoId)
+            : await supabase.from('registros').insert([payload]);
+        if (err) { setError('Erro ao salvar: '+err.message); }
+        else {
+            setSuccess(editandoId ? 'Registro atualizado!' : 'Registro salvo!');
+            setTimeout(()=>setSuccess(''), 3000);
+            limparForm();
+            carregarRegistros();
         }
+        setSaving(false);
+    };
 
-        // Componente: Página de Relatório
-        function RelatorioPage() {
-            const [filtro, setFiltro] = useState('semana-atual');
-            const [dataInicio, setDataInicio] = useState('');
-            const [dataFim, setDataFim] = useState('');
-            const [registros, setRegistros] = useState([]);
-            const [stats, setStats] = useState({
-                total: 0,
-                motoristasUnicos: 0,
-                rotaMaisExecutada: '',
-                veiculoMaisUtilizado: ''
+    const editarRegistro = (reg) => {
+        setEditandoId(reg.id);
+        setData(reg.data);
+        setMotoristaId(reg.motorista_id);
+        setRotaId(reg.rota_id);
+        setVeiculoId(reg.veiculo_id);
+        setObservacoes(reg.observacoes||'');
+        window.scrollTo(0,0);
+    };
+
+    const excluirRegistro = async (id) => {
+        const { error: err } = await supabase.from('registros').delete().eq('id',id);
+        if (err) setError('Erro ao excluir: '+err.message);
+        else {
+            setSuccess('Registro excluído.');
+            setTimeout(()=>setSuccess(''),3000);
+            carregarRegistros();
+        }
+        setConfirmModal(null);
+    };
+
+    return (
+        <div className="content">
+            {error && <div className="alert alert-error">❌ {error}</div>}
+            {success && <div className="alert alert-success">✓ {success}</div>}
+
+            {/* Navegação por data */}
+            <div className="date-nav">
+                <button className="date-nav-btn" onClick={()=>setData(d=>addDays(d,-1))}>‹</button>
+                <div className="date-nav-center" onClick={()=>dateInputRef.current?.showPicker?.()}>
+                    <div className="date-nav-main">{formatDateFull(data)}</div>
+                    <div className="date-nav-sub">{isToday(data) ? 'Hoje' : formatDate(data)}</div>
+                </div>
+                <button className="date-nav-btn" onClick={()=>setData(d=>addDays(d,1))}>›</button>
+                {!isToday(data) && (
+                    <button className="date-nav-today-btn" onClick={()=>setData(getTodayString())}>Hoje</button>
+                )}
+            </div>
+            <input ref={dateInputRef} type="date" value={data} onChange={e=>setData(e.target.value)} className="date-input-hidden" />
+
+            {editandoId && (
+                <div className="editing-banner">
+                    ✍️ Editando registro — confirme ou cancele abaixo
+                </div>
+            )}
+
+            {/* Formulário */}
+            <div className="form-group">
+                <label>Motorista *</label>
+                <select value={motoristaId} onChange={e=>setMotoristaId(e.target.value)}>
+                    <option value="">Selecione um motorista</option>
+                    {motoristas.map(m=><option key={m.id} value={m.id}>{m.nome}</option>)}
+                </select>
+            </div>
+
+            <div className="form-group">
+                <label>Rota *</label>
+                <select value={rotaId} onChange={e=>setRotaId(e.target.value)}>
+                    <option value="">Selecione uma rota</option>
+                    {rotas.map(r=><option key={r.id} value={r.id}>{r.nome}</option>)}
+                </select>
+            </div>
+
+            <div className="form-group">
+                <label>Veículo *</label>
+                <select value={veiculoId} onChange={e=>setVeiculoId(e.target.value)}>
+                    <option value="">Selecione um veículo</option>
+                    {veiculos.map(v=><option key={v.id} value={v.id}>{v.nome}</option>)}
+                </select>
+            </div>
+
+            <div className="form-group">
+                <label>Observações</label>
+                <textarea
+                    value={observacoes}
+                    onChange={e=>setObservacoes(e.target.value)}
+                    placeholder="Anotações opcionais..."
+                />
+            </div>
+
+            <div style={{display:'flex',gap:'8px'}}>
+                <button className="btn btn-primary" onClick={salvar} disabled={saving} style={{flex:1}}>
+                    {saving ? 'Salvando...' : editandoId ? '✓ Atualizar' : '+ Salvar Registro'}
+                </button>
+                {editandoId && (
+                    <button className="btn btn-secondary" onClick={limparForm}>Cancelar</button>
+                )}
+            </div>
+
+            {/* Lista do dia */}
+            <div className="section-title" style={{marginTop:'24px'}}>
+                Registros do dia
+                {registros.length>0 && <span className="section-count">{registros.length}</span>}
+            </div>
+
+            {loading ? (
+                <div className="loading"><div className="spinner"/><br/>Carregando...</div>
+            ) : registros.length === 0 ? (
+                <div className="empty">
+                    <div className="empty-icon">📋</div>
+                    <div className="empty-title">Nenhum registro</div>
+                    <div className="empty-text">Nada registrado para {formatDateFull(data)}</div>
+                </div>
+            ) : (
+                registros.map(reg => (
+                    <div key={reg.id} className="card">
+                        <div className="card-header">
+                            <div className="card-driver">{reg.motoristas?.nome||'N/A'}</div>
+                        </div>
+                        <div className="card-info">
+                            <div className="card-row"><span className="card-row-icon">🛣️</span>{reg.rotas?.nome||'N/A'}</div>
+                            <div className="card-row"><span className="card-row-icon">🚛</span>{reg.veiculos?.nome||'N/A'}</div>
+                        </div>
+                        {reg.observacoes && <div className="card-obs">{reg.observacoes}</div>}
+                        <div className="card-actions">
+                            <button className="btn btn-ghost" onClick={()=>editarRegistro(reg)}>✍️ Editar</button>
+                            <button className="btn btn-danger" onClick={()=>setConfirmModal({id:reg.id,nome:reg.motoristas?.nome})}>
+                                🗑️ Excluir
+                            </button>
+                        </div>
+                    </div>
+                ))
+            )}
+
+            <ConfirmModal
+                isOpen={!!confirmModal}
+                title="Excluir registro?"
+                text={`O registro de ${confirmModal?.nome||''} será removido permanentemente.`}
+                confirmLabel="Excluir"
+                onConfirm={()=>excluirRegistro(confirmModal.id)}
+                onCancel={()=>setConfirmModal(null)}
+            />
+        </div>
+    );
+}
+
+/* ══════════════════════════════════════════
+   PÁGINA: RELATÓRIO
+═══════════════════════════════════════════ */
+function RelatorioPage() {
+    const [filtro, setFiltro] = useState('mes-atual');
+    const [dataInicio, setDataInicio] = useState('');
+    const [dataFim, setDataFim] = useState('');
+    const [registros, setRegistros] = useState([]);
+    const [stats, setStats] = useState({ total:0, motoristasUnicos:0, rotaMaisExecutada:'—', veiculoMaisUtilizado:'—' });
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [agrupar, setAgrupar] = useState('data'); // 'data' | 'motorista'
+
+    useEffect(() => { if (filtro !== 'personalizado') carregarDados(); }, [filtro]);
+    useEffect(() => { if (filtro === 'personalizado' && dataInicio && dataFim) carregarDados(); }, [dataInicio, dataFim, filtro]);
+
+    const carregarDados = async () => {
+        setLoading(true); setError('');
+        let inicio, fim;
+        if (filtro==='semana-atual') { ({start:inicio,end:fim}=getWeekDates(0)); }
+        else if (filtro==='semana-passada') { ({start:inicio,end:fim}=getWeekDates(-1)); }
+        else if (filtro==='mes-atual') { ({start:inicio,end:fim}=getMonthDates(0)); }
+        else if (filtro==='mes-passado') { ({start:inicio,end:fim}=getMonthDates(-1)); }
+        else if (filtro==='personalizado') { inicio=dataInicio; fim=dataFim; }
+
+        const { data: rows, error: err } = await supabase
+            .from('registros')
+            .select('*, motoristas(nome), rotas(nome), veiculos(nome)')
+            .gte('data', inicio).lte('data', fim)
+            .order('data', { ascending: false });
+
+        if (err) { setError('Erro: '+err.message); setLoading(false); return; }
+
+        const d = rows||[];
+        setRegistros(d);
+
+        const motoristasSet = new Set(d.map(r=>r.motorista_id));
+        const rotasCount = {}, veiculosCount = {};
+        d.forEach(r=>{
+            rotasCount[r.rota_id]=(rotasCount[r.rota_id]||0)+1;
+            veiculosCount[r.veiculo_id]=(veiculosCount[r.veiculo_id]||0)+1;
+        });
+        const topRota = Object.keys(rotasCount).reduce((a,b)=>rotasCount[a]>rotasCount[b]?a:b, null);
+        const topVeiculo = Object.keys(veiculosCount).reduce((a,b)=>veiculosCount[a]>veiculosCount[b]?a:b, null);
+
+        setStats({
+            total: d.length,
+            motoristasUnicos: motoristasSet.size,
+            rotaMaisExecutada: topRota ? d.find(r=>r.rota_id===topRota)?.rotas?.nome||'—' : '—',
+            veiculoMaisUtilizado: topVeiculo ? d.find(r=>r.veiculo_id===topVeiculo)?.veiculos?.nome||'—' : '—',
+        });
+        setLoading(false);
+    };
+
+    /* Agrupar registros */
+    const grouped = (() => {
+        if (agrupar==='motorista') {
+            const map = {};
+            registros.forEach(r=>{
+                const key = r.motoristas?.nome||'Sem nome';
+                if (!map[key]) map[key]=[];
+                map[key].push(r);
             });
-            const [loading, setLoading] = useState(false);
-            const [error, setError] = useState('');
+            return Object.entries(map).sort((a,b)=>a[0].localeCompare(b[0]));
+        } else {
+            const map = {};
+            registros.forEach(r=>{
+                const key = r.data;
+                if (!map[key]) map[key]=[];
+                map[key].push(r);
+            });
+            return Object.entries(map).sort((a,b)=>b[0].localeCompare(a[0]));
+        }
+    })();
 
-            useEffect(() => {
-                carregarDados();
-            }, [filtro, dataInicio, dataFim]);
+    return (
+        <div className="content">
+            {error && <div className="alert alert-error">❌ {error}</div>}
 
-            const carregarDados = async () => {
-                setLoading(true);
-                setError('');
-                try {
-                    let inicio, fim;
+            <div className="filter-pills">
+                {[
+                    {id:'semana-atual',label:'Esta semana'},
+                    {id:'semana-passada',label:'Sem. passada'},
+                    {id:'mes-atual',label:'Este mês'},
+                    {id:'mes-passado',label:'Mês passado'},
+                    {id:'personalizado',label:'Período'},
+                ].map(f=>(
+                    <button key={f.id} className={`pill${filtro===f.id?' active':''}`} onClick={()=>setFiltro(f.id)}>
+                        {f.label}
+                    </button>
+                ))}
+            </div>
 
-                    if (filtro === 'semana-atual') {
-                        const dates = getWeekDates(0);
-                        inicio = dates.start;
-                        fim = dates.end;
-                    } else if (filtro === 'semana-passada') {
-                        const dates = getWeekDates(-1);
-                        inicio = dates.start;
-                        fim = dates.end;
-                    } else if (filtro === 'mes-atual') {
-                        const dates = getMonthDates(0);
-                        inicio = dates.start;
-                        fim = dates.end;
-                    } else if (filtro === 'mes-passado') {
-                        const dates = getMonthDates(-1);
-                        inicio = dates.start;
-                        fim = dates.end;
-                    } else if (filtro === 'personalizado') {
-                        if (!dataInicio || !dataFim) {
-                            setError('Selecione as datas');
-                            setLoading(false);
-                            return;
-                        }
-                        inicio = dataInicio;
-                        fim = dataFim;
-                    }
-
-                    const { data, error: err } = await supabase
-                        .from('registros')
-                        .select(`
-                            *,
-                            motoristas(nome),
-                            rotas(nome),
-                            veiculos(nome)
-                        `)
-                        .gte('data', inicio)
-                        .lte('data', fim)
-                        .order('data', { ascending: false });
-                    
-                    // Garantir que as datas estão corretas (sem conversão UTC)
-                    if (data) {
-                        data.forEach(r => {
-                            // A data já vem como string YYYY-MM-DD do banco
-                        });
-                    }
-
-                    if (err) throw err;
-
-                    setRegistros(data || []);
-
-                    // Calcular estatísticas
-                    const motoristasUnicos = new Set(data?.map(r => r.motorista_id) || []).size;
-                    const rotasCount = {};
-                    const veiculosCount = {};
-
-                    data?.forEach(r => {
-                        rotasCount[r.rota_id] = (rotasCount[r.rota_id] || 0) + 1;
-                        veiculosCount[r.veiculo_id] = (veiculosCount[r.veiculo_id] || 0) + 1;
-                    });
-
-                    const rotaMaisExecutada = Object.keys(rotasCount).length > 0
-                        ? data?.find(r => r.rota_id === Object.keys(rotasCount).reduce((a, b) => rotasCount[a] > rotasCount[b] ? a : b))?.rotas?.nome || 'N/A'
-                        : 'N/A';
-
-                    const veiculoMaisUtilizado = Object.keys(veiculosCount).length > 0
-                        ? data?.find(r => r.veiculo_id === Object.keys(veiculosCount).reduce((a, b) => veiculosCount[a] > veiculosCount[b] ? a : b))?.veiculos?.nome || 'N/A'
-                        : 'N/A';
-
-                    setStats({
-                        total: data?.length || 0,
-                        motoristasUnicos,
-                        rotaMaisExecutada,
-                        veiculoMaisUtilizado
-                    });
-                } catch (err) {
-                    setError('Erro ao carregar dados: ' + err.message);
-                }
-                setLoading(false);
-            };
-
-            return (
-                <div className="content">
-                    {error && <div className="error">❌ {error}</div>}
-
-                    <div className="filter-buttons">
-                        <button
-                            className={`filter-btn ${filtro === 'semana-atual' ? 'active' : ''}`}
-                            onClick={() => setFiltro('semana-atual')}
-                        >
-                            Semana Atual
-                        </button>
-                        <button
-                            className={`filter-btn ${filtro === 'semana-passada' ? 'active' : ''}`}
-                            onClick={() => setFiltro('semana-passada')}
-                        >
-                            Semana Passada
-                        </button>
-                        <button
-                            className={`filter-btn ${filtro === 'mes-atual' ? 'active' : ''}`}
-                            onClick={() => setFiltro('mes-atual')}
-                        >
-                            Mês Atual
-                        </button>
-                        <button
-                            className={`filter-btn ${filtro === 'mes-passado' ? 'active' : ''}`}
-                            onClick={() => setFiltro('mes-passado')}
-                        >
-                            Mês Passado
-                        </button>
-                        <button
-                            className={`filter-btn ${filtro === 'personalizado' ? 'active' : ''}`}
-                            onClick={() => setFiltro('personalizado')}
-                        >
-                            Personalizado
-                        </button>
+            {filtro==='personalizado' && (
+                <div className="date-range">
+                    <div>
+                        <label>De</label>
+                        <input type="date" value={dataInicio} onChange={e=>setDataInicio(e.target.value)}/>
                     </div>
-
-                    {filtro === 'personalizado' && (
-                        <div className="date-range-inputs">
-                            <input
-                                type="date"
-                                value={dataInicio}
-                                onChange={(e) => setDataInicio(e.target.value)}
-                                placeholder="Data inicial"
-                            />
-                            <input
-                                type="date"
-                                value={dataFim}
-                                onChange={(e) => setDataFim(e.target.value)}
-                                placeholder="Data final"
-                            />
-                        </div>
-                    )}
-
-                    <div className="stats-grid">
-                        <div className="stat-card">
-                            <div className="stat-value">{stats.total}</div>
-                            <div className="stat-label">Registros</div>
-                        </div>
-                        <div className="stat-card">
-                            <div className="stat-value">{stats.motoristasUnicos}</div>
-                            <div className="stat-label">Motoristas</div>
-                        </div>
-                        <div className="stat-card">
-                            <div className="stat-value" style={{ fontSize: '14px' }}>{stats.rotaMaisExecutada}</div>
-                            <div className="stat-label">Rota Mais Executada</div>
-                        </div>
-                        <div className="stat-card">
-                            <div className="stat-value" style={{ fontSize: '14px' }}>{stats.veiculoMaisUtilizado}</div>
-                            <div className="stat-label">Veículo Mais Utilizado</div>
-                        </div>
+                    <div>
+                        <label>Até</label>
+                        <input type="date" value={dataFim} onChange={e=>setDataFim(e.target.value)}/>
                     </div>
+                </div>
+            )}
 
-                    <h3 className="section-title">Registros do Período</h3>
-                    {registros.length === 0 ? (
-                        <div className="empty-state">
-                            <div className="empty-state-icon">📊</div>
-                            <div className="empty-state-text">Nenhum registro para este período</div>
-                        </div>
-                    ) : (
-                        registros.map((reg) => (
-                            <div key={reg.id} className="card">
-                                <div className="card-title">{formatDate(reg.data)}</div>
-                                <div className="card-text">👤 {reg.motoristas?.nome || 'N/A'}</div>
-                                <div className="card-text">🛣️ {reg.rotas?.nome || 'N/A'}</div>
-                                <div className="card-text">🚗 {reg.veiculos?.nome || 'N/A'}</div>
-                                {reg.observacoes && (
-                                    <div className="card-text">📝 {reg.observacoes}</div>
-                                )}
+            {/* Stats */}
+            <div className="stats-grid">
+                <div className="stat-card highlight">
+                    <div className="stat-value">{stats.total}</div>
+                    <div className="stat-label">Total de viagens</div>
+                </div>
+                <div className="stat-card highlight">
+                    <div className="stat-value">{stats.motoristasUnicos}</div>
+                    <div className="stat-label">Motoristas</div>
+                </div>
+                <div className="stat-card">
+                    <div className="stat-label">Rota mais executada</div>
+                    <div className="stat-value-sm">{stats.rotaMaisExecutada}</div>
+                </div>
+                <div className="stat-card">
+                    <div className="stat-label">Veículo mais usado</div>
+                    <div className="stat-value-sm">{stats.veiculoMaisUtilizado}</div>
+                </div>
+            </div>
+
+            {/* Agrupar toggle */}
+            {registros.length > 0 && (
+                <div style={{display:'flex',gap:'6px',marginBottom:'14px',alignItems:'center'}}>
+                    <span style={{fontSize:'12px',color:'var(--gray-400)',fontWeight:'600',textTransform:'uppercase',letterSpacing:'0.5px'}}>Agrupar:</span>
+                    <button className={`pill${agrupar==='data'?' active':''}`} onClick={()=>setAgrupar('data')}>Por data</button>
+                    <button className={`pill${agrupar==='motorista'?' active':''}`} onClick={()=>setAgrupar('motorista')}>Por motorista</button>
+                </div>
+            )}
+
+            {loading ? (
+                <div className="loading"><div className="spinner"/><br/>Carregando...</div>
+            ) : registros.length===0 ? (
+                <div className="empty">
+                    <div className="empty-icon">📊</div>
+                    <div className="empty-title">Sem registros</div>
+                    <div className="empty-text">Nenhuma viagem encontrada neste período</div>
+                </div>
+            ) : (
+                grouped.map(([groupKey, items])=>(
+                    <div key={groupKey}>
+                        <div className="group-header">
+                            <div className="group-label">
+                                {agrupar==='data' ? formatDateFull(groupKey) : groupKey}
                             </div>
-                        ))
-                    )}
-                </div>
-            );
-        }
-
-        // Componente Principal
-        function App() {
-            const [paginaAtiva, setPaginaAtiva] = useState('registro');
-
-            const renderPagina = () => {
-                switch (paginaAtiva) {
-                    case 'registro':
-                        return <RegistroPage />;
-                    case 'relatorio':
-                        return <RelatorioPage />;
-                    case 'configuracoes':
-                        return <ConfiguracoesPage />;
-                    default:
-                        return <RegistroPage />;
-                }
-            };
-
-            const getTitulo = () => {
-                switch (paginaAtiva) {
-                    case 'registro':
-                        return 'Registro';
-                    case 'relatorio':
-                        return 'Relatório';
-                    case 'configuracoes':
-                        return 'Configurações';
-                    default:
-                        return 'Controle de Rotas';
-                }
-            };
-
-            return (
-                <div className="app-container">
-                    <div className="header">
-                        <h1>{getTitulo()}</h1>
+                            <div className="group-line"/>
+                            <div className="group-badge">{items.length}</div>
+                        </div>
+                        {items.map(reg=>(
+                            <div key={reg.id} className="card">
+                                {agrupar==='data' ? (
+                                    <>
+                                        <div className="card-driver">{reg.motoristas?.nome||'N/A'}</div>
+                                        <div className="card-info" style={{marginTop:'6px'}}>
+                                            <div className="card-row"><span className="card-row-icon">🛣️</span>{reg.rotas?.nome||'N/A'}</div>
+                                            <div className="card-row"><span className="card-row-icon">🚛</span>{reg.veiculos?.nome||'N/A'}</div>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="card-header">
+                                            <div className="card-row"><span className="card-row-icon">🛣️</span><strong>{reg.rotas?.nome||'N/A'}</strong></div>
+                                            <div className="card-date-badge">{formatDate(reg.data)}</div>
+                                        </div>
+                                        <div className="card-row" style={{marginTop:'4px'}}><span className="card-row-icon">🚛</span>{reg.veiculos?.nome||'N/A'}</div>
+                                    </>
+                                )}
+                                {reg.observacoes && <div className="card-obs">{reg.observacoes}</div>}
+                            </div>
+                        ))}
                     </div>
-                    {renderPagina()}
-                    <div className="nav-bar">
-                        <div
-                            className={`nav-item ${paginaAtiva === 'registro' ? 'active' : ''}`}
-                            onClick={() => setPaginaAtiva('registro')}
-                        >
-                            <div className="icon">📋</div>
-                            <div>Registro</div>
-                        </div>
-                        <div
-                            className={`nav-item ${paginaAtiva === 'relatorio' ? 'active' : ''}`}
-                            onClick={() => setPaginaAtiva('relatorio')}
-                        >
-                            <div className="icon">📊</div>
-                            <div>Relatório</div>
-                        </div>
-                        <div
-                            className={`nav-item ${paginaAtiva === 'configuracoes' ? 'active' : ''}`}
-                            onClick={() => setPaginaAtiva('configuracoes')}
-                        >
-                            <div className="icon">⚙️</div>
-                            <div>Config</div>
-                        </div>
-                    </div>
-                </div>
-            );
-        }
+                ))
+            )}
+        </div>
+    );
+}
 
-        ReactDOM.render(<App />, document.getElementById('root'));
-    </script>
+/* ══════════════════════════════════════════
+   PÁGINA: CONFIGURAÇÕES
+═══════════════════════════════════════════ */
+function SectionManager({ title, tableName }) {
+    const [items, setItems] = useState([]);
+    const [editingId, setEditingId] = useState(null);
+    const [editingValue, setEditingValue] = useState('');
+    const [adding, setAdding] = useState(false);
+    const [newValue, setNewValue] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [confirmModal, setConfirmModal] = useState(null);
+
+    useEffect(() => { load(); }, []);
+
+    const load = async () => {
+        const { data } = await supabase.from(tableName).select('*').order('nome');
+        setItems(data||[]);
+    };
+
+    const addItem = async () => {
+        if (!newValue.trim()) return;
+        setLoading(true);
+        await supabase.from(tableName).insert([{ nome: newValue.trim() }]);
+        setNewValue(''); setAdding(false);
+        load(); setLoading(false);
+    };
+
+    const updateItem = async (id) => {
+        if (!editingValue.trim()) return;
+        await supabase.from(tableName).update({ nome: editingValue.trim() }).eq('id', id);
+        setEditingId(null); load();
+    };
+
+    const toggleAtivo = async (item) => {
+        await supabase.from(tableName).update({ ativo: !item.ativo }).eq('id', item.id);
+        setConfirmModal(null); load();
+    };
+
+    const activeItems = items.filter(i=>i.ativo!==false);
+    const inactiveItems = items.filter(i=>i.ativo===false);
+
+    const renderItem = (item) => (
+        <div key={item.id} className={`list-item${item.ativo===false?' inactive':''}`}>
+            <div className={`list-item-dot${item.ativo===false?' inactive':' active'}`}/>
+            {editingId===item.id ? (
+                <input
+                    className="list-item-input"
+                    value={editingValue}
+                    onChange={e=>setEditingValue(e.target.value)}
+                    onKeyDown={e=>e.key==='Enter'&&updateItem(item.id)}
+                    autoFocus
+                />
+            ) : (
+                <div className="list-item-text">{item.nome}</div>
+            )}
+            <div className="list-item-actions">
+                {editingId===item.id ? (
+                    <>
+                        <button className="btn-icon" onClick={()=>updateItem(item.id)} title="Salvar">✓</button>
+                        <button className="btn-icon" onClick={()=>setEditingId(null)} title="Cancelar">✕</button>
+                    </>
+                ) : (
+                    <>
+                        <button className="btn-icon" title="Editar" onClick={()=>{ setEditingId(item.id); setEditingValue(item.nome); }}>✏️</button>
+                        <button className="btn-icon" title={item.ativo===false?'Reativar':'Inativar'}
+                            onClick={()=>setConfirmModal(item)}>
+                            {item.ativo===false?'♻️':'🗑️'}
+                        </button>
+                    </>
+                )}
+            </div>
+        </div>
+    );
+
+    return (
+        <div style={{marginBottom:'8px'}}>
+            <div className="section-title">
+                {title}
+                {activeItems.length>0 && <span className="section-count">{activeItems.length}</span>}
+            </div>
+
+            {activeItems.length===0 && !adding && (
+                <div style={{color:'var(--gray-400)',fontSize:'13px',padding:'8px 0'}}>Nenhum item ativo</div>
+            )}
+
+            {activeItems.map(renderItem)}
+
+            {adding ? (
+                <div className="add-item-row">
+                    <input
+                        value={newValue}
+                        onChange={e=>setNewValue(e.target.value)}
+                        placeholder="Nome do item..."
+                        onKeyDown={e=>e.key==='Enter'&&addItem()}
+                        autoFocus
+                    />
+                    <button className="btn-icon" onClick={addItem} disabled={loading}>✓</button>
+                    <button className="btn-icon" onClick={()=>{ setAdding(false); setNewValue(''); }}>✕</button>
+                </div>
+            ) : (
+                <button className="btn btn-secondary" onClick={()=>setAdding(true)} style={{width:'100%',marginTop:'4px',fontSize:'13px'}}>
+                    + Adicionar
+                </button>
+            )}
+
+            {inactiveItems.length>0 && (
+                <>
+                    <div style={{fontSize:'11px',color:'var(--gray-400)',fontWeight:'600',textTransform:'uppercase',letterSpacing:'0.5px',marginTop:'12px',marginBottom:'6px'}}>
+                        Inativos ({inactiveItems.length})
+                    </div>
+                    {inactiveItems.map(renderItem)}
+                </>
+            )}
+
+            <ConfirmModal
+                isOpen={!!confirmModal}
+                title={confirmModal?.ativo===false ? `Reativar ${confirmModal?.nome}?` : `Inativar ${confirmModal?.nome}?`}
+                text={confirmModal?.ativo===false
+                    ? 'O item voltará a aparecer nas listas de registro.'
+                    : 'O item não aparecerá mais nas listas, mas os registros históricos serão mantidos.'}
+                confirmLabel={confirmModal?.ativo===false ? 'Reativar' : 'Inativar'}
+                confirmClass={confirmModal?.ativo===false ? 'btn-primary' : 'btn-danger'}
+                onConfirm={()=>toggleAtivo(confirmModal)}
+                onCancel={()=>setConfirmModal(null)}
+            />
+        </div>
+    );
+}
+
+function ConfiguracoesPage() {
+    return (
+        <div className="content">
+            <SectionManager title="👤 Motoristas" tableName="motoristas"/>
+            <div className="divider"/>
+            <SectionManager title="🚛 Veículos" tableName="veiculos"/>
+            <div className="divider"/>
+            <SectionManager title="🛣️ Rotas" tableName="rotas"/>
+        </div>
+    );
+}
+
+/* ══════════════════════════════════════════
+   APP PRINCIPAL
+═══════════════════════════════════════════ */
+function App() {
+    const [pagina, setPagina] = useState('registro');
+
+    const navItems = [
+        { id:'registro', icon:'📋', label:'Registro' },
+        { id:'relatorio', icon:'📊', label:'Relatório' },
+        { id:'configuracoes', icon:'⚙️', label:'Config' },
+    ];
+
+    const pageLabels = { registro:'Registro', relatorio:'Relatório', configuracoes:'Configurações' };
+
+    return (
+        <div style={{display:'flex',flexDirection:'column',height:'100%'}}>
+            <div className="header">
+                <div className="header-logo">🚛</div>
+                <div className="header-text">
+                    <div className="header-title">Farias Transportes</div>
+                    <div className="header-subtitle">Controle de Rotas</div>
+                </div>
+                <div className="header-page">{pageLabels[pagina]}</div>
+            </div>
+
+            {pagina==='registro' && <RegistroPage/>}
+            {pagina==='relatorio' && <RelatorioPage/>}
+            {pagina==='configuracoes' && <ConfiguracoesPage/>}
+
+            <div className="nav-bar">
+                {navItems.map(item=>(
+                    <div key={item.id} className={`nav-item${pagina===item.id?' active':''}`} onClick={()=>setPagina(item.id)}>
+                        <div className="nav-icon">{item.icon}</div>
+                        <div>{item.label}</div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+ReactDOM.render(<App/>, document.getElementById('root'));
+</script>
 </body>
 </html>
