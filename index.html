@@ -424,12 +424,10 @@
 
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // Funções auxiliares de data
-        const formatDate = (date) => {
-            const d = new Date(date);
-            const day = String(d.getDate()).padStart(2, '0');
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const year = d.getFullYear();
+        // Funções auxiliares de data - usando horário local
+        const formatDate = (dateStr) => {
+            // dateStr vem no formato YYYY-MM-DD
+            const [year, month, day] = dateStr.split('-');
             return `${day}/${month}/${year}`;
         };
 
@@ -439,7 +437,13 @@
         };
 
         const getDateString = (date) => {
-            const d = new Date(date);
+            // Garante que usa a data local, não UTC
+            let d;
+            if (typeof date === 'string') {
+                d = new Date(date + 'T00:00:00');
+            } else {
+                d = new Date(date);
+            }
             const year = d.getFullYear();
             const month = String(d.getMonth() + 1).padStart(2, '0');
             const day = String(d.getDate()).padStart(2, '0');
@@ -447,22 +451,34 @@
         };
 
         const getTodayString = () => {
+            // Pega a data local atual
             const today = new Date();
-            return getDateString(today);
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
         };
 
         const getWeekDates = (offset = 0) => {
             const today = new Date();
             const dayOfWeek = today.getDay();
             const diff = today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
-            const monday = new Date(today.setDate(diff));
+            const monday = new Date(today.getFullYear(), today.getMonth(), diff);
             monday.setDate(monday.getDate() + offset * 7);
             const sunday = new Date(monday);
             sunday.setDate(sunday.getDate() + 6);
-            return {
-                start: getDateString(monday),
-                end: getDateString(sunday)
-            };
+            
+            const year1 = monday.getFullYear();
+            const month1 = String(monday.getMonth() + 1).padStart(2, '0');
+            const day1 = String(monday.getDate()).padStart(2, '0');
+            const start = `${year1}-${month1}-${day1}`;
+            
+            const year2 = sunday.getFullYear();
+            const month2 = String(sunday.getMonth() + 1).padStart(2, '0');
+            const day2 = String(sunday.getDate()).padStart(2, '0');
+            const end = `${year2}-${month2}-${day2}`;
+            
+            return { start, end };
         };
 
         const getMonthDates = (offset = 0) => {
@@ -471,10 +487,18 @@
             const month = today.getMonth() + offset;
             const start = new Date(year, month, 1);
             const end = new Date(year, month + 1, 0);
-            return {
-                start: getDateString(start),
-                end: getDateString(end)
-            };
+            
+            const year1 = start.getFullYear();
+            const month1 = String(start.getMonth() + 1).padStart(2, '0');
+            const day1 = String(start.getDate()).padStart(2, '0');
+            const startStr = `${year1}-${month1}-${day1}`;
+            
+            const year2 = end.getFullYear();
+            const month2 = String(end.getMonth() + 1).padStart(2, '0');
+            const day2 = String(end.getDate()).padStart(2, '0');
+            const endStr = `${year2}-${month2}-${day2}`;
+            
+            return { start: startStr, end: endStr };
         };
 
         // Componente: Página de Registro
@@ -948,6 +972,13 @@
                         .gte('data', inicio)
                         .lte('data', fim)
                         .order('data', { ascending: false });
+                    
+                    // Garantir que as datas estão corretas (sem conversão UTC)
+                    if (data) {
+                        data.forEach(r => {
+                            // A data já vem como string YYYY-MM-DD do banco
+                        });
+                    }
 
                     if (err) throw err;
 
