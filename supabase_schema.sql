@@ -6,20 +6,28 @@
 create table if not exists motoristas (
   id uuid primary key default gen_random_uuid(),
   nome text not null,
+  ativo boolean default true,
   criado_em timestamp with time zone default now()
 );
 
 create table if not exists veiculos (
   id uuid primary key default gen_random_uuid(),
   nome text not null,
+  ativo boolean default true,
   criado_em timestamp with time zone default now()
 );
 
 create table if not exists rotas (
   id uuid primary key default gen_random_uuid(),
   nome text not null,
+  ativo boolean default true,
   criado_em timestamp with time zone default now()
 );
+
+-- Para projetos existentes criados antes da coluna `ativo` ser adicionada:
+-- alter table motoristas add column if not exists ativo boolean default true;
+-- alter table rotas      add column if not exists ativo boolean default true;
+-- alter table veiculos   add column if not exists ativo boolean default true;
 
 create table if not exists registros (
   id uuid primary key default gen_random_uuid(),
