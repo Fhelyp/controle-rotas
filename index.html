@@ -902,6 +902,81 @@
             grid-template-columns: 1fr 1fr;
             gap: 8px;
         }
+
+        /* ── Financeiro: campos de valor inline ── */
+        .inline-field {
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+        .inline-field > .form-group { flex: 1; margin-bottom: 0; min-width: 0; }
+        .money-wrap { flex-shrink: 0; width: 116px; }
+        .money-wrap label { white-space: nowrap; }
+        .money-input-box { position: relative; }
+        .money-input-box .money-prefix {
+            position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+            font-size: 13px; font-weight: 600; color: var(--gray-400); pointer-events: none;
+        }
+        .money-input-box input { padding-left: 30px; }
+        .money-input-box input:disabled { background: var(--gray-100); color: var(--gray-400); }
+
+        /* ── Receitas / Despesas (linhas dinâmicas) ── */
+        .fin-section { margin-bottom: 12px; }
+        .fin-section-head {
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;
+        }
+        .fin-section-head .label-inline {
+            font-weight: 600; font-size: 12px; color: var(--gray-500);
+            letter-spacing: 0.4px; text-transform: uppercase;
+        }
+        .line-item { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
+        .line-item .line-desc { flex: 1; min-width: 0; }
+        .line-item .line-val { width: 104px; flex-shrink: 0; }
+        .line-remove {
+            background: var(--red-light); color: var(--red); border: none;
+            border-radius: 6px; width: 36px; height: 40px; flex-shrink: 0; font-size: 15px;
+            cursor: pointer; -webkit-tap-highlight-color: transparent;
+        }
+        .line-remove:active { background: #fecaca; }
+        .add-line-btn {
+            background: var(--orange-light); color: var(--orange-dark);
+            border: 1px dashed var(--orange); border-radius: var(--radius-sm);
+            font-size: 13px; font-weight: 700; padding: 8px 12px; cursor: pointer; width: 100%;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .add-line-btn:active { background: #ffedd5; }
+
+        /* ── Resumo financeiro nos cards ── */
+        .card-fin {
+            display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px;
+            padding-top: 8px; border-top: 1px dashed var(--gray-200);
+        }
+        .card-fin-item { font-size: 12px; color: var(--gray-600); }
+        .fin-pos { color: var(--green); font-weight: 700; }
+        .fin-neg { color: var(--red); font-weight: 700; }
+
+        /* ── Cards de estatística coloridos ── */
+        .stat-card.receita .stat-value-sm { color: var(--green); }
+        .stat-card.despesa .stat-value-sm { color: var(--red); }
+
+        /* ── Lista de pagamentos no relatório ── */
+        .report-section-title {
+            font-size: 12px; font-weight: 700; color: var(--gray-500);
+            text-transform: uppercase; letter-spacing: 0.5px; margin: 18px 0 8px;
+        }
+        .pay-card {
+            background: white; border: 1px solid var(--gray-200); border-radius: var(--radius);
+            padding: 4px 14px; margin-bottom: 8px; box-shadow: var(--shadow-sm);
+        }
+        .pay-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 0; border-bottom: 1px solid var(--gray-100); gap: 10px;
+        }
+        .pay-row:last-child { border-bottom: none; }
+        .pay-name { font-weight: 700; color: var(--navy); font-size: 14px; }
+        .pay-role { font-size: 11px; color: var(--gray-400); font-weight: 600; text-transform: uppercase; margin-top: 2px; }
+        .pay-total { font-weight: 700; color: var(--navy); font-size: 15px; white-space: nowrap; }
     </style>
 </head>
 <body>
@@ -962,6 +1037,23 @@ const getMonthDates = (offset=0) => {
     return { start: fmt(start), end: fmt(end) };
 };
 
+/* ── Money helpers ── */
+const fmtBRL = (v) => new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL' }).format(Number(v)||0);
+
+// Aceita "300", "300,50", "1.500,75" ou "300.50" e devolve número
+const parseValor = (s) => {
+    if (s == null || s === '') return 0;
+    let str = String(s).trim();
+    if (str.indexOf(',') >= 0) str = str.replace(/\./g, '').replace(',', '.');
+    const n = parseFloat(str);
+    return isNaN(n) ? 0 : n;
+};
+
+// Converte número do banco para texto editável (0/null vira vazio)
+const valorToStr = (n) => (!n || isNaN(Number(n))) ? '' : String(n).replace('.', ',');
+
+const somaValores = (arr) => (arr||[]).reduce((s, x) => s + (Number(x.valor) || 0), 0);
+
 /* ── Toast system ── */
 let toastId = 0;
 function useToasts() {
@@ -1014,7 +1106,13 @@ function RegistroPage({ toast }) {
     const [rotaId, setRotaId] = useState('');
     const [veiculoId, setVeiculoId] = useState('');
     const [observacoes, setObservacoes] = useState('');
+    const [ajudanteId, setAjudanteId] = useState('');
+    const [valorMotorista, setValorMotorista] = useState('');
+    const [valorAjudante, setValorAjudante] = useState('');
+    const [receitas, setReceitas] = useState([]);
+    const [despesas, setDespesas] = useState([]);
     const [motoristas, setMotoristas] = useState([]);
+    const [ajudantes, setAjudantes] = useState([]);
     const [rotas, setRotas] = useState([]);
     const [veiculos, setVeiculos] = useState([]);
     const [registros, setRegistros] = useState([]);
@@ -1029,29 +1127,38 @@ function RegistroPage({ toast }) {
     useEffect(() => { carregarRegistros(); }, [data]);
 
     const carregarBase = async () => {
-        const [mr, rr, vr] = await Promise.all([
+        const [mr, rr, vr, ar] = await Promise.all([
             supabase.from('motoristas').select('*').eq('ativo',true).order('nome'),
             supabase.from('rotas').select('*').eq('ativo',true).order('nome'),
             supabase.from('veiculos').select('*').eq('ativo',true).order('nome'),
+            supabase.from('ajudantes').select('*').eq('ativo',true).order('nome'),
         ]);
         setMotoristas(mr.data||[]);
         setRotas(rr.data||[]);
         setVeiculos(vr.data||[]);
+        setAjudantes(ar.data||[]);
     };
 
     const carregarRegistros = async () => {
         setLoading(true);
         const { data: rows, error: err } = await supabase
             .from('registros')
-            .select('*, motoristas(nome), rotas(nome), veiculos(nome)')
+            .select('*, motoristas(nome), ajudantes(nome), rotas(nome), veiculos(nome), receitas(*), despesas(*)')
             .eq('data', data)
             .order('criado_em', { ascending: false });
         if (!err) setRegistros(rows||[]);
         setLoading(false);
     };
 
+    /* Helpers de linhas dinâmicas (receitas/despesas) */
+    const addLinha = (setter) => setter(arr => [...arr, { descricao:'', valor:'' }]);
+    const updLinha = (setter, idx, campo, val) => setter(arr => arr.map((it,i)=> i===idx ? {...it,[campo]:val} : it));
+    const rmLinha  = (setter, idx) => setter(arr => arr.filter((_,i)=> i!==idx));
+
     const limparForm = () => {
         setMotoristaId(''); setRotaId(''); setVeiculoId(''); setObservacoes('');
+        setAjudanteId(''); setValorMotorista(''); setValorAjudante('');
+        setReceitas([]); setDespesas([]);
         setEditandoId(null);
     };
 
@@ -1061,17 +1168,51 @@ function RegistroPage({ toast }) {
             return;
         }
         setSaving(true);
-        const payload = { data, motorista_id: motoristaId, rota_id: rotaId, veiculo_id: veiculoId, observacoes: observacoes||null };
-        const { error: err } = editandoId
-            ? await supabase.from('registros').update(payload).eq('id', editandoId)
-            : await supabase.from('registros').insert([payload]);
+        const payload = {
+            data,
+            motorista_id: motoristaId,
+            ajudante_id: ajudanteId || null,
+            rota_id: rotaId,
+            veiculo_id: veiculoId,
+            valor_motorista: parseValor(valorMotorista),
+            valor_ajudante: ajudanteId ? parseValor(valorAjudante) : 0,
+            observacoes: observacoes||null,
+        };
+
+        let registroId = editandoId;
+        let err;
+        if (editandoId) {
+            ({ error: err } = await supabase.from('registros').update(payload).eq('id', editandoId));
+        } else {
+            const res = await supabase.from('registros').insert([payload]).select('id').single();
+            err = res.error;
+            registroId = res.data?.id;
+        }
+
         if (err) {
             toast('Erro ao salvar: '+err.message, 'error');
-        } else {
-            toast(editandoId ? 'Registro atualizado!' : 'Registro salvo!');
-            limparForm();
-            carregarRegistros();
+            setSaving(false);
+            return;
         }
+
+        // Recria receitas/despesas filhas do registro
+        if (registroId) {
+            if (editandoId) {
+                await supabase.from('receitas').delete().eq('registro_id', registroId);
+                await supabase.from('despesas').delete().eq('registro_id', registroId);
+            }
+            const montar = (arr) => (arr||[])
+                .filter(it => (it.descricao||'').trim() || parseValor(it.valor) > 0)
+                .map(it => ({ registro_id: registroId, descricao: (it.descricao||'').trim() || null, valor: parseValor(it.valor) }));
+            const recRows = montar(receitas);
+            const despRows = montar(despesas);
+            if (recRows.length)  await supabase.from('receitas').insert(recRows);
+            if (despRows.length) await supabase.from('despesas').insert(despRows);
+        }
+
+        toast(editandoId ? 'Registro atualizado!' : 'Registro salvo!');
+        limparForm();
+        carregarRegistros();
         setSaving(false);
     };
 
@@ -1079,8 +1220,13 @@ function RegistroPage({ toast }) {
         setEditandoId(reg.id);
         setData(reg.data);
         setMotoristaId(reg.motorista_id);
+        setAjudanteId(reg.ajudante_id||'');
         setRotaId(reg.rota_id);
         setVeiculoId(reg.veiculo_id);
+        setValorMotorista(valorToStr(reg.valor_motorista));
+        setValorAjudante(valorToStr(reg.valor_ajudante));
+        setReceitas((reg.receitas||[]).map(r=>({ descricao:r.descricao||'', valor:valorToStr(r.valor) })));
+        setDespesas((reg.despesas||[]).map(d=>({ descricao:d.descricao||'', valor:valorToStr(d.valor) })));
         setObservacoes(reg.observacoes||'');
         contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -1121,12 +1267,40 @@ function RegistroPage({ toast }) {
             <div className="form-section">
                 <div className="form-section-title">{editandoId ? '✍️ Editar registro' : '+ Novo registro'}</div>
 
-                <div className="form-group">
-                    <label>Motorista</label>
-                    <select value={motoristaId} onChange={e=>setMotoristaId(e.target.value)}>
-                        <option value="">Selecione</option>
-                        {motoristas.map(m=><option key={m.id} value={m.id}>{m.nome}</option>)}
-                    </select>
+                <div className="inline-field">
+                    <div className="form-group">
+                        <label>Motorista</label>
+                        <select value={motoristaId} onChange={e=>setMotoristaId(e.target.value)}>
+                            <option value="">Selecione</option>
+                            {motoristas.map(m=><option key={m.id} value={m.id}>{m.nome}</option>)}
+                        </select>
+                    </div>
+                    <div className="money-wrap">
+                        <label>Valor</label>
+                        <div className="money-input-box">
+                            <span className="money-prefix">R$</span>
+                            <input type="text" inputMode="decimal" placeholder="0,00"
+                                value={valorMotorista} onChange={e=>setValorMotorista(e.target.value)}/>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="inline-field">
+                    <div className="form-group">
+                        <label>Ajudante <span style={{textTransform:'none',color:'var(--gray-400)',fontWeight:'500'}}>(opcional)</span></label>
+                        <select value={ajudanteId} onChange={e=>setAjudanteId(e.target.value)}>
+                            <option value="">Nenhum</option>
+                            {ajudantes.map(a=><option key={a.id} value={a.id}>{a.nome}</option>)}
+                        </select>
+                    </div>
+                    <div className="money-wrap">
+                        <label>Valor</label>
+                        <div className="money-input-box">
+                            <span className="money-prefix">R$</span>
+                            <input type="text" inputMode="decimal" placeholder="0,00" disabled={!ajudanteId}
+                                value={valorAjudante} onChange={e=>setValorAjudante(e.target.value)}/>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="form-row-2">
@@ -1145,6 +1319,40 @@ function RegistroPage({ toast }) {
                             {veiculos.map(v=><option key={v.id} value={v.id}>{v.nome}</option>)}
                         </select>
                     </div>
+                </div>
+
+                {/* Receitas (opcional, várias) */}
+                <div className="fin-section">
+                    <div className="fin-section-head">
+                        <span className="label-inline">💰 Receitas (opcional)</span>
+                    </div>
+                    {receitas.map((r,i)=>(
+                        <div className="line-item" key={i}>
+                            <input className="line-desc" type="text" placeholder="Descrição (ex: frete)"
+                                value={r.descricao} onChange={e=>updLinha(setReceitas,i,'descricao',e.target.value)}/>
+                            <input className="line-val" type="text" inputMode="decimal" placeholder="R$ 0,00"
+                                value={r.valor} onChange={e=>updLinha(setReceitas,i,'valor',e.target.value)}/>
+                            <button type="button" className="line-remove" onClick={()=>rmLinha(setReceitas,i)}>✕</button>
+                        </div>
+                    ))}
+                    <button type="button" className="add-line-btn" onClick={()=>addLinha(setReceitas)}>+ Adicionar receita</button>
+                </div>
+
+                {/* Despesas (opcional, várias) */}
+                <div className="fin-section">
+                    <div className="fin-section-head">
+                        <span className="label-inline">🧾 Despesas (opcional)</span>
+                    </div>
+                    {despesas.map((d,i)=>(
+                        <div className="line-item" key={i}>
+                            <input className="line-desc" type="text" placeholder="Descrição (ex: pernoite)"
+                                value={d.descricao} onChange={e=>updLinha(setDespesas,i,'descricao',e.target.value)}/>
+                            <input className="line-val" type="text" inputMode="decimal" placeholder="R$ 0,00"
+                                value={d.valor} onChange={e=>updLinha(setDespesas,i,'valor',e.target.value)}/>
+                            <button type="button" className="line-remove" onClick={()=>rmLinha(setDespesas,i)}>✕</button>
+                        </div>
+                    ))}
+                    <button type="button" className="add-line-btn" onClick={()=>addLinha(setDespesas)}>+ Adicionar despesa</button>
                 </div>
 
                 <div className="form-group">
@@ -1182,7 +1390,12 @@ function RegistroPage({ toast }) {
                     <div className="empty-text">Nada registrado para {formatDateFull(data)}</div>
                 </div>
             ) : (
-                registros.map(reg => (
+                registros.map(reg => {
+                    const totRec = somaValores(reg.receitas);
+                    const totDesp = (Number(reg.valor_motorista)||0) + (Number(reg.valor_ajudante)||0) + somaValores(reg.despesas);
+                    const saldo = totRec - totDesp;
+                    const temFin = totRec>0 || totDesp>0;
+                    return (
                     <div key={reg.id} className="card">
                         <div className="card-header">
                             <div className="card-driver">{reg.motoristas?.nome||'N/A'}</div>
@@ -1190,8 +1403,16 @@ function RegistroPage({ toast }) {
                         <div className="card-info">
                             <div className="card-row"><span className="card-row-icon">🛣️</span>{reg.rotas?.nome||'N/A'}</div>
                             <div className="card-row"><span className="card-row-icon">🚛</span>{reg.veiculos?.nome||'N/A'}</div>
+                            {reg.ajudantes?.nome && <div className="card-row"><span className="card-row-icon">🧑‍🔧</span>Ajudante: {reg.ajudantes.nome}</div>}
                         </div>
                         {reg.observacoes && <div className="card-obs">{reg.observacoes}</div>}
+                        {temFin && (
+                            <div className="card-fin">
+                                <span className="card-fin-item">Receita: <span className="fin-pos">{fmtBRL(totRec)}</span></span>
+                                <span className="card-fin-item">Despesa: <span className="fin-neg">{fmtBRL(totDesp)}</span></span>
+                                <span className="card-fin-item">Saldo: <span className={saldo>=0?'fin-pos':'fin-neg'}>{fmtBRL(saldo)}</span></span>
+                            </div>
+                        )}
                         <div className="card-actions">
                             <button className="btn btn-ghost" onClick={()=>editarRegistro(reg)}>✍️ Editar</button>
                             <button className="btn btn-danger" onClick={()=>setConfirmModal({id:reg.id,nome:reg.motoristas?.nome})}>
@@ -1199,7 +1420,8 @@ function RegistroPage({ toast }) {
                             </button>
                         </div>
                     </div>
-                ))
+                    );
+                })
             )}
 
             <ConfirmModal
@@ -1222,7 +1444,7 @@ function RelatorioPage({ toast }) {
     const [dataInicio, setDataInicio] = useState('');
     const [dataFim, setDataFim] = useState('');
     const [registros, setRegistros] = useState([]);
-    const [stats, setStats] = useState({ total:0, motoristasUnicos:0, rotaMaisExecutada:'—', veiculoMaisUtilizado:'—' });
+    const [stats, setStats] = useState({ total:0, motoristasUnicos:0, rotaMaisExecutada:'—', veiculoMaisUtilizado:'—', receitaTotal:0, despesaTotal:0 });
     const [loading, setLoading] = useState(false);
     const [agrupar, setAgrupar] = useState('data');
 
@@ -1240,7 +1462,7 @@ function RelatorioPage({ toast }) {
 
         const { data: rows, error: err } = await supabase
             .from('registros')
-            .select('*, motoristas(nome), rotas(nome), veiculos(nome)')
+            .select('*, motoristas(nome), ajudantes(nome), rotas(nome), veiculos(nome), receitas(*), despesas(*)')
             .gte('data', inicio).lte('data', fim)
             .order('data', { ascending: false });
 
@@ -1251,9 +1473,12 @@ function RelatorioPage({ toast }) {
 
         const motoristasSet = new Set(d.map(r=>r.motorista_id));
         const rotasCount = {}, veiculosCount = {};
+        let receitaTotal = 0, despesaTotal = 0;
         d.forEach(r=>{
             rotasCount[r.rota_id]=(rotasCount[r.rota_id]||0)+1;
             veiculosCount[r.veiculo_id]=(veiculosCount[r.veiculo_id]||0)+1;
+            receitaTotal += somaValores(r.receitas);
+            despesaTotal += (Number(r.valor_motorista)||0) + (Number(r.valor_ajudante)||0) + somaValores(r.despesas);
         });
         const topRota = Object.keys(rotasCount).reduce((a,b)=>rotasCount[a]>rotasCount[b]?a:b, null);
         const topVeiculo = Object.keys(veiculosCount).reduce((a,b)=>veiculosCount[a]>veiculosCount[b]?a:b, null);
@@ -1263,6 +1488,8 @@ function RelatorioPage({ toast }) {
             motoristasUnicos: motoristasSet.size,
             rotaMaisExecutada: topRota ? d.find(r=>r.rota_id===topRota)?.rotas?.nome||'—' : '—',
             veiculoMaisUtilizado: topVeiculo ? d.find(r=>r.veiculo_id===topVeiculo)?.veiculos?.nome||'—' : '—',
+            receitaTotal,
+            despesaTotal,
         });
         setLoading(false);
     };
@@ -1286,6 +1513,28 @@ function RelatorioPage({ toast }) {
             return Object.entries(map).sort((a,b)=>b[0].localeCompare(a[0]));
         }
     })();
+
+    /* Pagamentos por pessoa (motorista/ajudante): dias trabalhados + total a pagar */
+    const pagamentos = (() => {
+        const map = {};
+        registros.forEach(r=>{
+            if (r.motorista_id) {
+                const k = 'm_'+r.motorista_id;
+                if (!map[k]) map[k] = { nome: r.motoristas?.nome||'—', papel:'Motorista', dias:new Set(), total:0 };
+                map[k].dias.add(r.data);
+                map[k].total += Number(r.valor_motorista)||0;
+            }
+            if (r.ajudante_id) {
+                const k = 'a_'+r.ajudante_id;
+                if (!map[k]) map[k] = { nome: r.ajudantes?.nome||'—', papel:'Ajudante', dias:new Set(), total:0 };
+                map[k].dias.add(r.data);
+                map[k].total += Number(r.valor_ajudante)||0;
+            }
+        });
+        return Object.values(map).sort((a,b)=> b.total - a.total || a.nome.localeCompare(b.nome));
+    })();
+    const totalAPagar = pagamentos.reduce((s,p)=>s+p.total, 0);
+    const saldoPeriodo = stats.receitaTotal - stats.despesaTotal;
 
     return (
         <div className="content page-enter">
@@ -1317,6 +1566,24 @@ function RelatorioPage({ toast }) {
             )}
 
             <div className="stats-grid">
+                <div className="stat-card receita highlight">
+                    <div className="stat-value-sm">{fmtBRL(stats.receitaTotal)}</div>
+                    <div className="stat-label">Receita total</div>
+                </div>
+                <div className="stat-card despesa highlight">
+                    <div className="stat-value-sm">{fmtBRL(stats.despesaTotal)}</div>
+                    <div className="stat-label">Despesa total</div>
+                </div>
+            </div>
+
+            <div className="stat-card" style={{marginBottom:'14px',textAlign:'center'}}>
+                <div className="stat-label">Saldo do período</div>
+                <div className="stat-value-sm" style={{color: saldoPeriodo>=0?'var(--green)':'var(--red)', fontSize:'22px'}}>
+                    {fmtBRL(saldoPeriodo)}
+                </div>
+            </div>
+
+            <div className="stats-grid">
                 <div className="stat-card highlight">
                     <div className="stat-value">{stats.total}</div>
                     <div className="stat-label">Total de viagens</div>
@@ -1334,6 +1601,27 @@ function RelatorioPage({ toast }) {
                     <div className="stat-value-sm">{stats.veiculoMaisUtilizado}</div>
                 </div>
             </div>
+
+            {pagamentos.length > 0 && (
+                <>
+                    <div className="report-section-title">💵 A pagar no período</div>
+                    <div className="pay-card">
+                        {pagamentos.map((p,i)=>(
+                            <div className="pay-row" key={i}>
+                                <div>
+                                    <div className="pay-name">{p.nome}</div>
+                                    <div className="pay-role">{p.papel} · {p.dias.size} {p.dias.size===1?'dia':'dias'}</div>
+                                </div>
+                                <div className="pay-total">{fmtBRL(p.total)}</div>
+                            </div>
+                        ))}
+                        <div className="pay-row" style={{borderTop:'2px solid var(--gray-200)'}}>
+                            <div className="pay-name">Total a pagar</div>
+                            <div className="pay-total">{fmtBRL(totalAPagar)}</div>
+                        </div>
+                    </div>
+                </>
+            )}
 
             {registros.length > 0 && (
                 <div style={{display:'flex',gap:'6px',marginBottom:'14px',alignItems:'center'}}>
@@ -1361,7 +1649,12 @@ function RelatorioPage({ toast }) {
                             <div className="group-line"/>
                             <div className="group-badge">{items.length}</div>
                         </div>
-                        {items.map(reg=>(
+                        {items.map(reg=>{
+                            const totRec = somaValores(reg.receitas);
+                            const totDesp = (Number(reg.valor_motorista)||0) + (Number(reg.valor_ajudante)||0) + somaValores(reg.despesas);
+                            const saldo = totRec - totDesp;
+                            const temFin = totRec>0 || totDesp>0;
+                            return (
                             <div key={reg.id} className="card">
                                 {agrupar==='data' ? (
                                     <>
@@ -1369,6 +1662,7 @@ function RelatorioPage({ toast }) {
                                         <div className="card-info" style={{marginTop:'6px'}}>
                                             <div className="card-row"><span className="card-row-icon">🛣️</span>{reg.rotas?.nome||'N/A'}</div>
                                             <div className="card-row"><span className="card-row-icon">🚛</span>{reg.veiculos?.nome||'N/A'}</div>
+                                            {reg.ajudantes?.nome && <div className="card-row"><span className="card-row-icon">🧑‍🔧</span>Ajudante: {reg.ajudantes.nome}</div>}
                                         </div>
                                     </>
                                 ) : (
@@ -1377,12 +1671,22 @@ function RelatorioPage({ toast }) {
                                             <div className="card-row"><span className="card-row-icon">🛣️</span><strong>{reg.rotas?.nome||'N/A'}</strong></div>
                                             <div className="card-date-badge">{formatDate(reg.data)}</div>
                                         </div>
+                                        <div className="card-row" style={{marginTop:'4px'}}><span className="card-row-icon">👤</span>{reg.motoristas?.nome||'N/A'}</div>
                                         <div className="card-row" style={{marginTop:'4px'}}><span className="card-row-icon">🚛</span>{reg.veiculos?.nome||'N/A'}</div>
+                                        {reg.ajudantes?.nome && <div className="card-row" style={{marginTop:'4px'}}><span className="card-row-icon">🧑‍🔧</span>Ajudante: {reg.ajudantes.nome}</div>}
                                     </>
                                 )}
                                 {reg.observacoes && <div className="card-obs">{reg.observacoes}</div>}
+                                {temFin && (
+                                    <div className="card-fin">
+                                        <span className="card-fin-item">Receita: <span className="fin-pos">{fmtBRL(totRec)}</span></span>
+                                        <span className="card-fin-item">Despesa: <span className="fin-neg">{fmtBRL(totDesp)}</span></span>
+                                        <span className="card-fin-item">Saldo: <span className={saldo>=0?'fin-pos':'fin-neg'}>{fmtBRL(saldo)}</span></span>
+                                    </div>
+                                )}
                             </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 ))
             )}
@@ -1536,9 +1840,10 @@ function ConfiguracoesPage({ toast }) {
     return (
         <div className="content page-enter">
             <div style={{fontSize:'13px',color:'var(--gray-400)',marginBottom:'14px'}}>
-                Gerencie motoristas, veículos e rotas disponíveis
+                Gerencie motoristas, ajudantes, veículos e rotas disponíveis
             </div>
             <SectionManager title="Motoristas" icon="👤" tableName="motoristas" toast={toast}/>
+            <SectionManager title="Ajudantes" icon="🧑‍🔧" tableName="ajudantes" toast={toast}/>
             <SectionManager title="Veículos" icon="🚛" tableName="veiculos" toast={toast}/>
             <SectionManager title="Rotas" icon="🛣️" tableName="rotas" toast={toast}/>
         </div>
