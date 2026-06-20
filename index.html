@@ -981,6 +981,39 @@
         .pay-name { font-weight: 700; color: var(--navy); font-size: 14px; }
         .pay-role { font-size: 11px; color: var(--gray-400); font-weight: 600; text-transform: uppercase; margin-top: 2px; }
         .pay-total { font-weight: 700; color: var(--navy); font-size: 15px; white-space: nowrap; }
+
+        /* ── Abas do relatório (simples / completo) ── */
+        .mode-tabs {
+            display: flex; gap: 6px; background: var(--gray-100);
+            padding: 4px; border-radius: var(--radius-sm); margin-bottom: 14px;
+        }
+        .mode-tab {
+            flex: 1; border: none; background: transparent; padding: 9px 8px;
+            border-radius: 6px; font-family: 'Barlow', sans-serif; font-weight: 700;
+            font-size: 13px; color: var(--gray-500); cursor: pointer;
+            -webkit-tap-highlight-color: transparent; transition: all 0.15s;
+        }
+        .mode-tab.active { background: white; color: var(--navy); box-shadow: var(--shadow-sm); }
+
+        /* ── Tela de PIN (relatório completo) ── */
+        .pin-gate {
+            text-align: center; padding: 30px 20px; background: white;
+            border: 1px solid var(--gray-200); border-radius: var(--radius);
+            box-shadow: var(--shadow-sm);
+        }
+        .pin-gate .pin-icon { font-size: 40px; margin-bottom: 8px; }
+        .pin-gate .pin-title { font-weight: 700; color: var(--navy); font-size: 16px; }
+        .pin-gate .pin-sub { font-size: 13px; color: var(--gray-500); margin-top: 4px; }
+        .pin-input {
+            letter-spacing: 10px; text-align: center; font-size: 24px; font-weight: 700;
+            max-width: 180px; margin: 16px auto 6px;
+        }
+        .pin-erro { color: var(--red); font-size: 13px; font-weight: 600; min-height: 18px; }
+        .lock-btn {
+            background: none; border: none; color: var(--gray-400); font-size: 12px;
+            font-weight: 600; cursor: pointer; text-decoration: underline;
+            -webkit-tap-highlight-color: transparent;
+        }
     </style>
 </head>
 <body>
@@ -1057,6 +1090,25 @@ const parseValor = (s) => {
 const valorToStr = (n) => (!n || isNaN(Number(n))) ? '' : String(n).replace('.', ',');
 
 const somaValores = (arr) => (arr||[]).reduce((s, x) => s + (Number(x.valor) || 0), 0);
+
+// Período: últimos N dias (inclui hoje)
+const getUltimosDias = (n) => {
+    const today = new Date();
+    const start = new Date(today.getFullYear(), today.getMonth(), today.getDate() - (n-1));
+    const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    return { start: fmt(start), end: fmt(today) };
+};
+
+// Hash SHA-256 (hex) — usado para validar o PIN de admin sem guardar o PIN em texto
+const sha256Hex = async (text) => {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+};
+
+// Rota "# BASE": motorista ficou na base (sem rota/veículo)
+const isRotaBase = (nome) => (nome||'').trim().toUpperCase() === '# BASE';
+// Nome do veículo a exibir num registro (mostra "# BASE" quando a rota é base)
+const veiculoLabel = (reg) => isRotaBase(reg.rotas?.nome) ? '# BASE' : (reg.veiculos?.nome || 'N/A');
 
 /* ── Toast system ── */
 let toastId = 0;
@@ -1159,6 +1211,10 @@ function RegistroPage({ toast }) {
     const updLinha = (setter, idx, campo, val) => setter(arr => arr.map((it,i)=> i===idx ? {...it,[campo]:val} : it));
     const rmLinha  = (setter, idx) => setter(arr => arr.filter((_,i)=> i!==idx));
 
+    // Rota "# BASE": motorista ficou na base, sem veículo
+    const baseRota = rotas.find(r => isRotaBase(r.nome));
+    const isBase = !!(baseRota && rotaId === baseRota.id);
+
     const limparForm = () => {
         setMotoristaId(''); setRotaId(''); setVeiculoId(''); setObservacoes('');
         setAjudanteId(''); setValorMotorista(''); setValorAjudante('');
@@ -1167,7 +1223,7 @@ function RegistroPage({ toast }) {
     };
 
     const salvar = async () => {
-        if (!motoristaId || !rotaId || !veiculoId) {
+        if (!motoristaId || !rotaId || (!isBase && !veiculoId)) {
             toast('Preencha motorista, rota e veículo', 'error');
             return;
         }
@@ -1177,7 +1233,7 @@ function RegistroPage({ toast }) {
             motorista_id: motoristaId,
             ajudante_id: ajudanteId || null,
             rota_id: rotaId,
-            veiculo_id: veiculoId,
+            veiculo_id: isBase ? null : veiculoId,
             valor_motorista: parseValor(valorMotorista),
             valor_ajudante: ajudanteId ? parseValor(valorAjudante) : 0,
             observacoes: observacoes||null,
@@ -1318,10 +1374,16 @@ function RegistroPage({ toast }) {
 
                     <div className="form-group">
                         <label>Veículo</label>
-                        <select value={veiculoId} onChange={e=>setVeiculoId(e.target.value)}>
-                            <option value="">Selecione</option>
-                            {veiculos.map(v=><option key={v.id} value={v.id}>{v.nome}</option>)}
-                        </select>
+                        {isBase ? (
+                            <select value="base" disabled>
+                                <option value="base"># BASE</option>
+                            </select>
+                        ) : (
+                            <select value={veiculoId} onChange={e=>setVeiculoId(e.target.value)}>
+                                <option value="">Selecione</option>
+                                {veiculos.map(v=><option key={v.id} value={v.id}>{v.nome}</option>)}
+                            </select>
+                        )}
                     </div>
                 </div>
 
@@ -1395,10 +1457,8 @@ function RegistroPage({ toast }) {
                 </div>
             ) : (
                 registros.map(reg => {
-                    const totRec = somaValores(reg.receitas);
                     const totDesp = (Number(reg.valor_motorista)||0) + (Number(reg.valor_ajudante)||0) + somaValores(reg.despesas);
-                    const saldo = totRec - totDesp;
-                    const temFin = totRec>0 || totDesp>0;
+                    const temFin = totDesp>0;
                     return (
                     <div key={reg.id} className="card">
                         <div className="card-header">
@@ -1406,15 +1466,13 @@ function RegistroPage({ toast }) {
                         </div>
                         <div className="card-info">
                             <div className="card-row"><span className="card-row-icon">🛣️</span>{reg.rotas?.nome||'N/A'}</div>
-                            <div className="card-row"><span className="card-row-icon">🚛</span>{reg.veiculos?.nome||'N/A'}</div>
+                            <div className="card-row"><span className="card-row-icon">🚛</span>{veiculoLabel(reg)}</div>
                             {reg.ajudantes?.nome && <div className="card-row"><span className="card-row-icon">🧑‍🔧</span>Ajudante: {reg.ajudantes.nome}</div>}
                         </div>
                         {reg.observacoes && <div className="card-obs">{reg.observacoes}</div>}
                         {temFin && (
                             <div className="card-fin">
-                                <span className="card-fin-item">Receita: <span className="fin-pos">{fmtBRL(totRec)}</span></span>
                                 <span className="card-fin-item">Despesa: <span className="fin-neg">{fmtBRL(totDesp)}</span></span>
-                                <span className="card-fin-item">Saldo: <span className={saldo>=0?'fin-pos':'fin-neg'}>{fmtBRL(saldo)}</span></span>
                             </div>
                         )}
                         <div className="card-actions">
@@ -1451,15 +1509,26 @@ function RelatorioPage({ toast }) {
     const [stats, setStats] = useState({ total:0, motoristasUnicos:0, rotaMaisExecutada:'—', veiculoMaisUtilizado:'—', receitaTotal:0, despesaTotal:0 });
     const [loading, setLoading] = useState(false);
     const [agrupar, setAgrupar] = useState('data');
+    const [modo, setModo] = useState('simples');
+    const [adminOk, setAdminOk] = useState(() => { try { return sessionStorage.getItem('farias_admin')==='1'; } catch(e){ return false; } });
+    const [adminHash, setAdminHash] = useState(null);
+    const [pin, setPin] = useState('');
+    const [pinErro, setPinErro] = useState('');
 
     useEffect(() => { if (filtro !== 'personalizado') carregarDados(); }, [filtro]);
     useEffect(() => { if (filtro === 'personalizado' && dataInicio && dataFim) carregarDados(); }, [dataInicio, dataFim, filtro]);
+    useEffect(() => {
+        supabase.from('config').select('valor').eq('chave','admin_senha_hash').maybeSingle()
+            .then(({ data }) => setAdminHash(data?.valor || ''))
+            .catch(() => setAdminHash(''));
+    }, []);
 
     const carregarDados = async () => {
         setLoading(true);
         let inicio, fim;
         if (filtro==='semana-atual') { ({start:inicio,end:fim}=getWeekDates(0)); }
         else if (filtro==='semana-passada') { ({start:inicio,end:fim}=getWeekDates(-1)); }
+        else if (filtro==='quinzena') { ({start:inicio,end:fim}=getUltimosDias(15)); }
         else if (filtro==='mes-atual') { ({start:inicio,end:fim}=getMonthDates(0)); }
         else if (filtro==='mes-passado') { ({start:inicio,end:fim}=getMonthDates(-1)); }
         else if (filtro==='personalizado') { inicio=dataInicio; fim=dataFim; }
@@ -1499,23 +1568,20 @@ function RelatorioPage({ toast }) {
     };
 
     const grouped = (() => {
-        if (agrupar==='motorista') {
-            const map = {};
-            registros.forEach(r=>{
-                const key = r.motoristas?.nome||'Sem nome';
-                if (!map[key]) map[key]=[];
-                map[key].push(r);
-            });
-            return Object.entries(map).sort((a,b)=>a[0].localeCompare(b[0]));
-        } else {
-            const map = {};
-            registros.forEach(r=>{
-                const key = r.data;
-                if (!map[key]) map[key]=[];
-                map[key].push(r);
-            });
-            return Object.entries(map).sort((a,b)=>b[0].localeCompare(a[0]));
-        }
+        const map = {};
+        registros.forEach(r=>{
+            // No agrupamento por ajudante, ignora registros sem ajudante
+            if (agrupar==='ajudante' && !r.ajudante_id) return;
+            const key = agrupar==='motorista' ? (r.motoristas?.nome||'Sem motorista')
+                      : agrupar==='ajudante'  ? (r.ajudantes?.nome||'Sem ajudante')
+                      : r.data;
+            if (!map[key]) map[key]=[];
+            map[key].push(r);
+        });
+        const entries = Object.entries(map);
+        return agrupar==='data'
+            ? entries.sort((a,b)=>b[0].localeCompare(a[0]))
+            : entries.sort((a,b)=>a[0].localeCompare(b[0]));
     })();
 
     /* Pagamentos por pessoa (motorista/ajudante): dias trabalhados + total a pagar */
@@ -1537,8 +1603,137 @@ function RelatorioPage({ toast }) {
         });
         return Object.values(map).sort((a,b)=> b.total - a.total || a.nome.localeCompare(b.nome));
     })();
-    const totalAPagar = pagamentos.reduce((s,p)=>s+p.total, 0);
+
+    // Filtra pagamentos pela dimensão escolhida (Por motorista / Por ajudante / todos)
+    const pagamentosFiltrados = agrupar==='motorista' ? pagamentos.filter(p=>p.papel==='Motorista')
+                              : agrupar==='ajudante'  ? pagamentos.filter(p=>p.papel==='Ajudante')
+                              : pagamentos;
+    const totalAPagar = pagamentosFiltrados.reduce((s,p)=>s+p.total, 0);
     const saldoPeriodo = stats.receitaTotal - stats.despesaTotal;
+
+    // Receita agrupada por rota ou por motorista (somente no relatório completo)
+    const receitaPor = (campo) => {
+        const map = {};
+        registros.forEach(r=>{
+            const nome = campo==='rota' ? (r.rotas?.nome||'Sem rota') : (r.motoristas?.nome||'Sem motorista');
+            map[nome] = (map[nome]||0) + somaValores(r.receitas);
+        });
+        return Object.entries(map).filter(([_,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+    };
+    const receitaPorRota = receitaPor('rota');
+    const receitaPorMotorista = receitaPor('motorista');
+
+    const completoLiberado = modo==='completo' && adminOk;
+
+    const desbloquear = async () => {
+        if (!adminHash) { setPinErro('PIN de admin ainda não configurado no banco.'); return; }
+        const h = await sha256Hex(pin);
+        if (h === adminHash) {
+            setAdminOk(true);
+            try { sessionStorage.setItem('farias_admin','1'); } catch(e){}
+            setPin(''); setPinErro('');
+        } else {
+            setPinErro('PIN incorreto.');
+        }
+    };
+    const sairAdmin = () => {
+        setAdminOk(false);
+        try { sessionStorage.removeItem('farias_admin'); } catch(e){}
+        setModo('simples');
+    };
+
+    const renderPagamentos = () => (
+        <>
+            {registros.length > 0 && (
+                <div style={{display:'flex',gap:'6px',marginBottom:'14px',alignItems:'center',flexWrap:'wrap'}}>
+                    <span style={{fontSize:'12px',color:'var(--gray-400)',fontWeight:'600',textTransform:'uppercase',letterSpacing:'0.5px'}}>Agrupar:</span>
+                    <button className={`pill${agrupar==='data'?' active':''}`} onClick={()=>setAgrupar('data')}>Por data</button>
+                    <button className={`pill${agrupar==='motorista'?' active':''}`} onClick={()=>setAgrupar('motorista')}>Motorista</button>
+                    <button className={`pill${agrupar==='ajudante'?' active':''}`} onClick={()=>setAgrupar('ajudante')}>Ajudante</button>
+                </div>
+            )}
+            {pagamentosFiltrados.length > 0 && (
+                <>
+                    <div className="report-section-title">💵 A pagar no período</div>
+                    <div className="pay-card">
+                        {pagamentosFiltrados.map((p,i)=>(
+                            <div className="pay-row" key={i}>
+                                <div>
+                                    <div className="pay-name">{p.nome}</div>
+                                    <div className="pay-role">{p.papel} · {p.dias.size} {p.dias.size===1?'dia':'dias'}</div>
+                                </div>
+                                <div className="pay-total">{fmtBRL(p.total)}</div>
+                            </div>
+                        ))}
+                        <div className="pay-row" style={{borderTop:'2px solid var(--gray-200)'}}>
+                            <div className="pay-name">Total a pagar</div>
+                            <div className="pay-total">{fmtBRL(totalAPagar)}</div>
+                        </div>
+                    </div>
+                </>
+            )}
+        </>
+    );
+
+    const renderLista = () => (
+        loading ? (
+            <div className="loading"><div className="spinner"/><br/>Carregando...</div>
+        ) : registros.length === 0 ? (
+            <div className="empty">
+                <div className="empty-icon">📊</div>
+                <div className="empty-title">Sem registros</div>
+                <div className="empty-text">Nenhum dado encontrado para o período selecionado</div>
+            </div>
+        ) : (
+            grouped.map(([label, items]) => (
+                <div key={label}>
+                    <div className="group-header">
+                        <div className="group-label">{agrupar==='data' ? formatDateFull(label) : label}</div>
+                        <div className="group-line"/>
+                        <div className="group-badge">{items.length}</div>
+                    </div>
+                    {items.map(reg=>{
+                        const totRec = somaValores(reg.receitas);
+                        const totDesp = (Number(reg.valor_motorista)||0) + (Number(reg.valor_ajudante)||0) + somaValores(reg.despesas);
+                        const saldo = totRec - totDesp;
+                        const temFin = completoLiberado ? (totRec>0 || totDesp>0) : (totDesp>0);
+                        return (
+                        <div key={reg.id} className="card">
+                            {agrupar==='data' ? (
+                                <>
+                                    <div className="card-driver">{reg.motoristas?.nome||'N/A'}</div>
+                                    <div className="card-info" style={{marginTop:'6px'}}>
+                                        <div className="card-row"><span className="card-row-icon">🛣️</span>{reg.rotas?.nome||'N/A'}</div>
+                                        <div className="card-row"><span className="card-row-icon">🚛</span>{veiculoLabel(reg)}</div>
+                                        {reg.ajudantes?.nome && <div className="card-row"><span className="card-row-icon">🧑‍🔧</span>Ajudante: {reg.ajudantes.nome}</div>}
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="card-header">
+                                        <div className="card-row"><span className="card-row-icon">🛣️</span><strong>{reg.rotas?.nome||'N/A'}</strong></div>
+                                        <div className="card-date-badge">{formatDate(reg.data)}</div>
+                                    </div>
+                                    <div className="card-row" style={{marginTop:'4px'}}><span className="card-row-icon">👤</span>{reg.motoristas?.nome||'N/A'}</div>
+                                    <div className="card-row" style={{marginTop:'4px'}}><span className="card-row-icon">🚛</span>{veiculoLabel(reg)}</div>
+                                    {reg.ajudantes?.nome && <div className="card-row" style={{marginTop:'4px'}}><span className="card-row-icon">🧑‍🔧</span>Ajudante: {reg.ajudantes.nome}</div>}
+                                </>
+                            )}
+                            {reg.observacoes && <div className="card-obs">{reg.observacoes}</div>}
+                            {temFin && (
+                                <div className="card-fin">
+                                    {completoLiberado && <span className="card-fin-item">Receita: <span className="fin-pos">{fmtBRL(totRec)}</span></span>}
+                                    <span className="card-fin-item">Despesa: <span className="fin-neg">{fmtBRL(totDesp)}</span></span>
+                                    {completoLiberado && <span className="card-fin-item">Saldo: <span className={saldo>=0?'fin-pos':'fin-neg'}>{fmtBRL(saldo)}</span></span>}
+                                </div>
+                            )}
+                        </div>
+                        );
+                    })}
+                </div>
+            ))
+        )
+    );
 
     return (
         <div className="content page-enter">
@@ -1546,6 +1741,7 @@ function RelatorioPage({ toast }) {
                 {[
                     {id:'semana-atual',label:'Esta semana'},
                     {id:'semana-passada',label:'Sem. passada'},
+                    {id:'quinzena',label:'Quinzena'},
                     {id:'mes-atual',label:'Este mês'},
                     {id:'mes-passado',label:'Mês passado'},
                     {id:'personalizado',label:'📅 Período'},
@@ -1569,130 +1765,114 @@ function RelatorioPage({ toast }) {
                 </div>
             )}
 
-            <div className="stats-grid">
-                <div className="stat-card receita highlight">
-                    <div className="stat-value-sm">{fmtBRL(stats.receitaTotal)}</div>
-                    <div className="stat-label">Receita total</div>
-                </div>
-                <div className="stat-card despesa highlight">
-                    <div className="stat-value-sm">{fmtBRL(stats.despesaTotal)}</div>
-                    <div className="stat-label">Despesa total</div>
-                </div>
+            <div className="mode-tabs">
+                <button className={`mode-tab${modo==='simples'?' active':''}`} onClick={()=>setModo('simples')}>📋 Simples</button>
+                <button className={`mode-tab${modo==='completo'?' active':''}`} onClick={()=>setModo('completo')}>{adminOk ? '📊 Completo' : '🔒 Completo'}</button>
             </div>
 
-            <div className="stat-card" style={{marginBottom:'14px',textAlign:'center'}}>
-                <div className="stat-label">Saldo do período</div>
-                <div className="stat-value-sm" style={{color: saldoPeriodo>=0?'var(--green)':'var(--red)', fontSize:'22px'}}>
-                    {fmtBRL(saldoPeriodo)}
-                </div>
-            </div>
-
-            <div className="stats-grid">
-                <div className="stat-card highlight">
-                    <div className="stat-value">{stats.total}</div>
-                    <div className="stat-label">Total de viagens</div>
-                </div>
-                <div className="stat-card highlight">
-                    <div className="stat-value">{stats.motoristasUnicos}</div>
-                    <div className="stat-label">Motoristas</div>
-                </div>
-                <div className="stat-card">
-                    <div className="stat-label">Rota mais executada</div>
-                    <div className="stat-value-sm">{stats.rotaMaisExecutada}</div>
-                </div>
-                <div className="stat-card">
-                    <div className="stat-label">Veículo mais usado</div>
-                    <div className="stat-value-sm">{stats.veiculoMaisUtilizado}</div>
-                </div>
-            </div>
-
-            {pagamentos.length > 0 && (
-                <>
-                    <div className="report-section-title">💵 A pagar no período</div>
-                    <div className="pay-card">
-                        {pagamentos.map((p,i)=>(
-                            <div className="pay-row" key={i}>
-                                <div>
-                                    <div className="pay-name">{p.nome}</div>
-                                    <div className="pay-role">{p.papel} · {p.dias.size} {p.dias.size===1?'dia':'dias'}</div>
-                                </div>
-                                <div className="pay-total">{fmtBRL(p.total)}</div>
-                            </div>
-                        ))}
-                        <div className="pay-row" style={{borderTop:'2px solid var(--gray-200)'}}>
-                            <div className="pay-name">Total a pagar</div>
-                            <div className="pay-total">{fmtBRL(totalAPagar)}</div>
-                        </div>
-                    </div>
-                </>
-            )}
-
-            {registros.length > 0 && (
-                <div style={{display:'flex',gap:'6px',marginBottom:'14px',alignItems:'center'}}>
-                    <span style={{fontSize:'12px',color:'var(--gray-400)',fontWeight:'600',textTransform:'uppercase',letterSpacing:'0.5px'}}>Agrupar:</span>
-                    <button className={`pill${agrupar==='data'?' active':''}`} onClick={()=>setAgrupar('data')}>Por data</button>
-                    <button className={`pill${agrupar==='motorista'?' active':''}`} onClick={()=>setAgrupar('motorista')}>Por motorista</button>
-                </div>
-            )}
-
-            {loading ? (
-                <div className="loading"><div className="spinner"/><br/>Carregando...</div>
-            ) : registros.length === 0 ? (
-                <div className="empty">
-                    <div className="empty-icon">📊</div>
-                    <div className="empty-title">Sem registros</div>
-                    <div className="empty-text">Nenhum dado encontrado para o período selecionado</div>
+            {modo==='completo' && !adminOk ? (
+                <div className="pin-gate">
+                    <div className="pin-icon">🔒</div>
+                    <div className="pin-title">Relatório completo</div>
+                    <div className="pin-sub">Digite o PIN de administrador para ver receitas e saldos.</div>
+                    <input
+                        className="pin-input"
+                        type="password"
+                        inputMode="numeric"
+                        maxLength={8}
+                        value={pin}
+                        onChange={e=>{ setPin(e.target.value); setPinErro(''); }}
+                        onKeyDown={e=>e.key==='Enter'&&desbloquear()}
+                        placeholder="••••"
+                        autoFocus
+                    />
+                    <div className="pin-erro">{pinErro}</div>
+                    <button className="btn btn-primary" style={{maxWidth:'180px',margin:'4px auto 0'}} onClick={desbloquear}>Desbloquear</button>
                 </div>
             ) : (
-                grouped.map(([label, items]) => (
-                    <div key={label}>
-                        <div className="group-header">
-                            <div className="group-label">
-                                {agrupar==='data' ? formatDateFull(label) : label}
+                <>
+                    {completoLiberado ? (
+                        <>
+                            <div className="stats-grid">
+                                <div className="stat-card receita highlight">
+                                    <div className="stat-value-sm">{fmtBRL(stats.receitaTotal)}</div>
+                                    <div className="stat-label">Receita total</div>
+                                </div>
+                                <div className="stat-card despesa highlight">
+                                    <div className="stat-value-sm">{fmtBRL(stats.despesaTotal)}</div>
+                                    <div className="stat-label">Despesa total</div>
+                                </div>
                             </div>
-                            <div className="group-line"/>
-                            <div className="group-badge">{items.length}</div>
-                        </div>
-                        {items.map(reg=>{
-                            const totRec = somaValores(reg.receitas);
-                            const totDesp = (Number(reg.valor_motorista)||0) + (Number(reg.valor_ajudante)||0) + somaValores(reg.despesas);
-                            const saldo = totRec - totDesp;
-                            const temFin = totRec>0 || totDesp>0;
-                            return (
-                            <div key={reg.id} className="card">
-                                {agrupar==='data' ? (
-                                    <>
-                                        <div className="card-driver">{reg.motoristas?.nome||'N/A'}</div>
-                                        <div className="card-info" style={{marginTop:'6px'}}>
-                                            <div className="card-row"><span className="card-row-icon">🛣️</span>{reg.rotas?.nome||'N/A'}</div>
-                                            <div className="card-row"><span className="card-row-icon">🚛</span>{reg.veiculos?.nome||'N/A'}</div>
-                                            {reg.ajudantes?.nome && <div className="card-row"><span className="card-row-icon">🧑‍🔧</span>Ajudante: {reg.ajudantes.nome}</div>}
-                                        </div>
-                                    </>
-                                ) : (
-                                    <>
-                                        <div className="card-header">
-                                            <div className="card-row"><span className="card-row-icon">🛣️</span><strong>{reg.rotas?.nome||'N/A'}</strong></div>
-                                            <div className="card-date-badge">{formatDate(reg.data)}</div>
-                                        </div>
-                                        <div className="card-row" style={{marginTop:'4px'}}><span className="card-row-icon">👤</span>{reg.motoristas?.nome||'N/A'}</div>
-                                        <div className="card-row" style={{marginTop:'4px'}}><span className="card-row-icon">🚛</span>{reg.veiculos?.nome||'N/A'}</div>
-                                        {reg.ajudantes?.nome && <div className="card-row" style={{marginTop:'4px'}}><span className="card-row-icon">🧑‍🔧</span>Ajudante: {reg.ajudantes.nome}</div>}
-                                    </>
-                                )}
-                                {reg.observacoes && <div className="card-obs">{reg.observacoes}</div>}
-                                {temFin && (
-                                    <div className="card-fin">
-                                        <span className="card-fin-item">Receita: <span className="fin-pos">{fmtBRL(totRec)}</span></span>
-                                        <span className="card-fin-item">Despesa: <span className="fin-neg">{fmtBRL(totDesp)}</span></span>
-                                        <span className="card-fin-item">Saldo: <span className={saldo>=0?'fin-pos':'fin-neg'}>{fmtBRL(saldo)}</span></span>
+                            <div className="stat-card" style={{marginBottom:'8px',textAlign:'center'}}>
+                                <div className="stat-label">Saldo do período</div>
+                                <div className="stat-value-sm" style={{color: saldoPeriodo>=0?'var(--green)':'var(--red)', fontSize:'22px'}}>{fmtBRL(saldoPeriodo)}</div>
+                            </div>
+                            <div style={{textAlign:'right',marginBottom:'12px'}}>
+                                <button className="lock-btn" onClick={sairAdmin}>🔒 Sair do modo admin</button>
+                            </div>
+                            <div className="stats-grid">
+                                <div className="stat-card highlight">
+                                    <div className="stat-value">{stats.total}</div>
+                                    <div className="stat-label">Total de viagens</div>
+                                </div>
+                                <div className="stat-card highlight">
+                                    <div className="stat-value">{stats.motoristasUnicos}</div>
+                                    <div className="stat-label">Motoristas</div>
+                                </div>
+                                <div className="stat-card">
+                                    <div className="stat-label">Rota mais executada</div>
+                                    <div className="stat-value-sm">{stats.rotaMaisExecutada}</div>
+                                </div>
+                                <div className="stat-card">
+                                    <div className="stat-label">Veículo mais usado</div>
+                                    <div className="stat-value-sm">{stats.veiculoMaisUtilizado}</div>
+                                </div>
+                            </div>
+
+                            {receitaPorRota.length > 0 && (
+                                <>
+                                    <div className="report-section-title">🛣️ Receita por rota</div>
+                                    <div className="pay-card">
+                                        {receitaPorRota.map(([nome,val],i)=>(
+                                            <div className="pay-row" key={i}>
+                                                <div className="pay-name">{nome}</div>
+                                                <div className="pay-total" style={{color:'var(--green)'}}>{fmtBRL(val)}</div>
+                                            </div>
+                                        ))}
                                     </div>
-                                )}
+                                </>
+                            )}
+
+                            {receitaPorMotorista.length > 0 && (
+                                <>
+                                    <div className="report-section-title">👤 Receita por motorista</div>
+                                    <div className="pay-card">
+                                        {receitaPorMotorista.map(([nome,val],i)=>(
+                                            <div className="pay-row" key={i}>
+                                                <div className="pay-name">{nome}</div>
+                                                <div className="pay-total" style={{color:'var(--green)'}}>{fmtBRL(val)}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+                        </>
+                    ) : (
+                        <div className="stats-grid">
+                            <div className="stat-card despesa highlight">
+                                <div className="stat-value-sm">{fmtBRL(stats.despesaTotal)}</div>
+                                <div className="stat-label">Despesa total</div>
                             </div>
-                            );
-                        })}
-                    </div>
-                ))
+                            <div className="stat-card highlight">
+                                <div className="stat-value">{stats.total}</div>
+                                <div className="stat-label">Total de viagens</div>
+                            </div>
+                        </div>
+                    )}
+
+                    {renderPagamentos()}
+                    {renderLista()}
+                </>
             )}
         </div>
     );

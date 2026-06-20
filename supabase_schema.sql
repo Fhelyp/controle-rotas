@@ -74,6 +74,12 @@ create table if not exists despesas (
   criado_em timestamp with time zone default now()
 );
 
+-- ── Configurações do app (ex.: hash do PIN de admin) ───────────
+create table if not exists config (
+  chave text primary key,
+  valor text
+);
+
 -- ── Índices ────────────────────────────────────────────────────
 create index if not exists idx_registros_data on registros(data);
 create index if not exists idx_registros_motorista on registros(motorista_id);
