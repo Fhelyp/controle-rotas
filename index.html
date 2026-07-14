@@ -1122,11 +1122,11 @@ const veiculoLabel = (reg) => isRotaBase(reg.rotas?.nome) ? (reg.rotas?.nome||''
 // Nome principal de um registro (motorista, ou ajudante quando é diária só do ajudante)
 const nomePrincipal = (reg) => reg.motoristas?.nome || reg.ajudantes?.nome || 'N/A';
 
-// Carrega o SheetJS (XLSX) sob demanda — só quando exporta, pra não pesar nem quebrar o app
+// Carrega o SheetJS (com estilos) sob demanda — só quando exporta, pra não pesar nem quebrar o app
 const carregarXLSX = () => new Promise((resolve, reject) => {
     if (window.XLSX) return resolve(window.XLSX);
     const s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    s.src = 'https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js';
     s.onload = () => window.XLSX ? resolve(window.XLSX) : reject(new Error('XLSX indisponível'));
     s.onerror = () => reject(new Error('Falha ao carregar a biblioteca de exportação'));
     document.head.appendChild(s);
@@ -1682,36 +1682,66 @@ function RelatorioPage({ toast }) {
         setModo('simples');
     };
 
-    // Exporta receitas e despesas do período/cliente filtrado em .xlsx (2 abas)
+    // Exporta receitas e despesas do período/cliente filtrado em .xlsx (2 abas, formatado)
     const exportarXLSX = async () => {
         if (!dados.length) { toast('Nada para exportar neste período', 'error'); return; }
         setExportando(true);
         try {
             const XLSX = await carregarXLSX();
             const mesDe = (d) => (d||'').slice(0,7);
+            const juntar = (...partes) => partes.map(p=>(p||'').toString().trim()).filter(Boolean).join(' — ');
             const despesasRows = [];
             const receitasRows = [];
             [...dados].sort((a,b)=>a.data.localeCompare(b.data)).forEach(r=>{
                 const dataBR = formatDate(r.data);
                 const m = mesDe(r.data);
+                const rota = r.rotas?.nome || '';
+                // Diária do motorista
                 if ((Number(r.valor_motorista)||0) > 0) {
-                    despesasRows.push({ DATA:dataBR, 'DESCRIÇÃO':'Diária motorista'+(r.rotas?.nome?(' — '+r.rotas.nome):''), VALOR:Number(r.valor_motorista), CATEGORIA:'Diária motorista', 'VEÍCULO/PESSOA':r.motoristas?.nome||'', 'MÊS':m });
+                    despesasRows.push({ DATA:dataBR, 'DESCRIÇÃO':juntar('Diária motorista', rota), VALOR:Number(r.valor_motorista), CATEGORIA:'Diária motorista', 'VEÍCULO/PESSOA':r.motoristas?.nome||'', 'MÊS':m });
                 }
+                // Diária do ajudante (avulso quando não há motorista na rota)
                 if ((Number(r.valor_ajudante)||0) > 0) {
-                    despesasRows.push({ DATA:dataBR, 'DESCRIÇÃO':'Diária ajudante', VALOR:Number(r.valor_ajudante), CATEGORIA:'Ajudante avulso', 'VEÍCULO/PESSOA':r.ajudantes?.nome||'', 'MÊS':m });
+                    const avulso = !r.motorista_id;
+                    despesasRows.push({ DATA:dataBR, 'DESCRIÇÃO':juntar(avulso?'Diária ajudante avulso':'Diária ajudante', rota), VALOR:Number(r.valor_ajudante), CATEGORIA:avulso?'Ajudante avulso':'Diária ajudante', 'VEÍCULO/PESSOA':r.ajudantes?.nome||'', 'MÊS':m });
                 }
+                // Despesas avulsas do registro (nome digitado + rota; pessoa/veículo na coluna)
                 (r.despesas||[]).forEach(d=>{
                     const vp = veiculoLabel(r);
-                    despesasRows.push({ DATA:dataBR, 'DESCRIÇÃO':d.descricao||'Despesa', VALOR:Number(d.valor)||0, CATEGORIA:'', 'VEÍCULO/PESSOA':(vp!=='N/A'?vp:''), 'MÊS':m });
+                    despesasRows.push({ DATA:dataBR, 'DESCRIÇÃO':juntar(d.descricao, rota) || 'Despesa', VALOR:Number(d.valor)||0, CATEGORIA:'', 'VEÍCULO/PESSOA':(vp!=='N/A'?vp:''), 'MÊS':m });
                 });
+                // Receitas (descrição = rota + motorista; fonte = 1ª palavra da rota)
                 (r.receitas||[]).forEach(rc=>{
-                    receitasRows.push({ DATA:dataBR, 'DESCRIÇÃO':rc.descricao||'Receita', VALOR:Number(rc.valor)||0, FONTE:(r.rotas?.nome?clienteDeRota(r.rotas.nome):'OUTROS'), 'MÊS':m });
+                    receitasRows.push({ DATA:dataBR, 'DESCRIÇÃO':juntar(rc.descricao, rota, r.motoristas?.nome) || 'Receita', VALOR:Number(rc.valor)||0, FONTE:(rota?clienteDeRota(rota):'OUTROS'), 'MÊS':m });
                 });
             });
             if (!despesasRows.length && !receitasRows.length) { toast('Sem receitas/despesas no período', 'error'); setExportando(false); return; }
+
+            // Estiliza cada aba: cabeçalho azul-marinho, bordas, VALOR como moeda
+            const borda = { top:{style:'thin',color:{rgb:'D9D9D9'}}, bottom:{style:'thin',color:{rgb:'D9D9D9'}}, left:{style:'thin',color:{rgb:'D9D9D9'}}, right:{style:'thin',color:{rgb:'D9D9D9'}} };
+            const larguraDe = (h,i,valorIdx) => i===valorIdx ? 14 : h==='DESCRIÇÃO' ? 44 : h==='VEÍCULO/PESSOA' ? 20 : (h==='CATEGORIA'||h==='FONTE') ? 16 : h==='DATA' ? 12 : 10;
+            const estilizar = (ws, headers, valorIdx) => {
+                const range = XLSX.utils.decode_range(ws['!ref']);
+                ws['!cols'] = headers.map((h,i)=>({ wch: larguraDe(h,i,valorIdx) }));
+                for (let C=range.s.c; C<=range.e.c; C++) {
+                    const ha = XLSX.utils.encode_cell({ r:0, c:C });
+                    if (ws[ha]) ws[ha].s = { font:{bold:true,color:{rgb:'FFFFFF'}}, fill:{fgColor:{rgb:'1F3864'}}, alignment:{horizontal:'center',vertical:'center'}, border:borda };
+                    for (let R=1; R<=range.e.r; R++) {
+                        const a = XLSX.utils.encode_cell({ r:R, c:C });
+                        if (!ws[a]) continue;
+                        ws[a].s = { border:borda, alignment:{ vertical:'center', horizontal: C===valorIdx?'right':'left' } };
+                        if (C===valorIdx) { ws[a].t='n'; ws[a].z='"R$" #,##0.00'; }
+                    }
+                }
+            };
+
+            const headD = ['DATA','DESCRIÇÃO','VALOR','CATEGORIA','VEÍCULO/PESSOA','MÊS'];
+            const headR = ['DATA','DESCRIÇÃO','VALOR','FONTE','MÊS'];
+            const wsD = XLSX.utils.json_to_sheet(despesasRows, { header:headD });
+            const wsR = XLSX.utils.json_to_sheet(receitasRows, { header:headR });
+            estilizar(wsD, headD, 2);
+            estilizar(wsR, headR, 2);
             const wb = XLSX.utils.book_new();
-            const wsD = XLSX.utils.json_to_sheet(despesasRows, { header:['DATA','DESCRIÇÃO','VALOR','CATEGORIA','VEÍCULO/PESSOA','MÊS'] });
-            const wsR = XLSX.utils.json_to_sheet(receitasRows, { header:['DATA','DESCRIÇÃO','VALOR','FONTE','MÊS'] });
             XLSX.utils.book_append_sheet(wb, wsD, 'Despesas');
             XLSX.utils.book_append_sheet(wb, wsR, 'Receitas');
             XLSX.writeFile(wb, `Farias - Relatorio${clienteFiltro!=='todos'?' '+clienteFiltro:''}.xlsx`);
@@ -1897,11 +1927,11 @@ function RelatorioPage({ toast }) {
                                 <div className="stat-label">Saldo do período</div>
                                 <div className="stat-value-sm" style={{color: saldoPeriodo>=0?'var(--green)':'var(--red)', fontSize:'22px'}}>{fmtBRL(saldoPeriodo)}</div>
                             </div>
-                            <button className="btn btn-primary" style={{marginBottom:'8px'}} onClick={exportarXLSX} disabled={exportando}>
-                                {exportando ? 'Gerando planilha...' : '⬇️ Baixar Excel (receitas e despesas)'}
-                            </button>
-                            <div style={{textAlign:'right',marginBottom:'12px'}}>
-                                <button className="lock-btn" onClick={sairAdmin}>🔒 Sair do modo admin</button>
+                            <div style={{display:'flex',gap:'8px',marginBottom:'14px'}}>
+                                <button className="btn btn-danger" style={{flex:1,fontSize:'14px'}} onClick={sairAdmin}>🔒 Sair modo Admin</button>
+                                <button className="btn btn-primary" style={{flex:1,boxShadow:'none'}} onClick={exportarXLSX} disabled={exportando}>
+                                    {exportando ? 'Gerando...' : '⬇️ Baixar Excel'}
+                                </button>
                             </div>
                             <div className="stats-grid">
                                 <div className="stat-card highlight">
