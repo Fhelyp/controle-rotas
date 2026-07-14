@@ -34,6 +34,6 @@ insert into rotas (nome)
 select v.nome from (values
   ('JFC - 01'), ('JFC - 02'), ('JFC - Arapiraca'), ('JFC - Extra'),
   ('LUZ - Urbana'), ('LUZ - Coruripe'), ('LUZ - Sertão'),
-  ('LUZ - Agreste'), ('LUZ - Maragogi'), ('# BASE'), ('# GARAGEM')
+  ('LUZ - Agreste'), ('LUZ - Maragogi')
 ) as v(nome)
 where not exists (select 1 from rotas r where lower(r.nome) = lower(v.nome));

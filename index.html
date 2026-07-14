@@ -1105,20 +1105,32 @@ const sha256Hex = async (text) => {
     return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 };
 
-// Rota administrativa (base/garagem): nome começa com "#" → sem veículo
-const isRotaBase = (nome) => (nome||'').trim().startsWith('#');
-// Nome do veículo a exibir (mostra a própria rota, ex. "# BASE", quando é administrativa)
-const veiculoLabel = (reg) => isRotaBase(reg.rotas?.nome) ? (reg.rotas?.nome||'').trim() : (reg.veiculos?.nome || 'N/A');
-// Cliente derivado do nome da rota (prefixo antes do " - "): "JFC - 01" → "JFC"
+// Cliente/Fonte derivado da rota = primeira palavra do nome (JFC, LUZ, ANJOS, BASE...)
 const clienteDeRota = (nome) => {
     if (!nome) return '—';
-    const t = nome.trim();
-    if (t.startsWith('#')) return 'Base/Garagem';
-    const i = t.indexOf(' - ');
-    return (i > 0 ? t.slice(0, i) : t).trim().toUpperCase();
+    const first = nome.trim().split(/[\s\-]+/).filter(Boolean)[0];
+    return (first || nome).trim().toUpperCase();
 };
+// Rota administrativa (base/garagem/sede): sem veículo. Pega "Base - Garagem" e "# ..."
+const isRotaBase = (nome) => {
+    const t = (nome||'').trim();
+    if (!t) return false;
+    return t.startsWith('#') || clienteDeRota(t) === 'BASE';
+};
+// Nome do veículo a exibir (mostra a própria rota quando é administrativa)
+const veiculoLabel = (reg) => isRotaBase(reg.rotas?.nome) ? (reg.rotas?.nome||'').trim() : (reg.veiculos?.nome || 'N/A');
 // Nome principal de um registro (motorista, ou ajudante quando é diária só do ajudante)
 const nomePrincipal = (reg) => reg.motoristas?.nome || reg.ajudantes?.nome || 'N/A';
+
+// Carrega o SheetJS (XLSX) sob demanda — só quando exporta, pra não pesar nem quebrar o app
+const carregarXLSX = () => new Promise((resolve, reject) => {
+    if (window.XLSX) return resolve(window.XLSX);
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    s.onload = () => window.XLSX ? resolve(window.XLSX) : reject(new Error('XLSX indisponível'));
+    s.onerror = () => reject(new Error('Falha ao carregar a biblioteca de exportação'));
+    document.head.appendChild(s);
+});
 
 /* ── Toast system ── */
 let toastId = 0;
@@ -1532,6 +1544,7 @@ function RelatorioPage({ toast }) {
     const [adminHash, setAdminHash] = useState(null);
     const [pin, setPin] = useState('');
     const [pinErro, setPinErro] = useState('');
+    const [exportando, setExportando] = useState(false);
 
     useEffect(() => { if (filtro !== 'personalizado') carregarDados(); }, [filtro]);
     useEffect(() => { if (filtro === 'personalizado' && dataInicio && dataFim) carregarDados(); }, [dataInicio, dataFim, filtro]);
@@ -1667,6 +1680,46 @@ function RelatorioPage({ toast }) {
         setAdminOk(false);
         try { sessionStorage.removeItem('farias_admin'); } catch(e){}
         setModo('simples');
+    };
+
+    // Exporta receitas e despesas do período/cliente filtrado em .xlsx (2 abas)
+    const exportarXLSX = async () => {
+        if (!dados.length) { toast('Nada para exportar neste período', 'error'); return; }
+        setExportando(true);
+        try {
+            const XLSX = await carregarXLSX();
+            const mesDe = (d) => (d||'').slice(0,7);
+            const despesasRows = [];
+            const receitasRows = [];
+            [...dados].sort((a,b)=>a.data.localeCompare(b.data)).forEach(r=>{
+                const dataBR = formatDate(r.data);
+                const m = mesDe(r.data);
+                if ((Number(r.valor_motorista)||0) > 0) {
+                    despesasRows.push({ DATA:dataBR, 'DESCRIÇÃO':'Diária motorista'+(r.rotas?.nome?(' — '+r.rotas.nome):''), VALOR:Number(r.valor_motorista), CATEGORIA:'Diária motorista', 'VEÍCULO/PESSOA':r.motoristas?.nome||'', 'MÊS':m });
+                }
+                if ((Number(r.valor_ajudante)||0) > 0) {
+                    despesasRows.push({ DATA:dataBR, 'DESCRIÇÃO':'Diária ajudante', VALOR:Number(r.valor_ajudante), CATEGORIA:'Ajudante avulso', 'VEÍCULO/PESSOA':r.ajudantes?.nome||'', 'MÊS':m });
+                }
+                (r.despesas||[]).forEach(d=>{
+                    const vp = veiculoLabel(r);
+                    despesasRows.push({ DATA:dataBR, 'DESCRIÇÃO':d.descricao||'Despesa', VALOR:Number(d.valor)||0, CATEGORIA:'', 'VEÍCULO/PESSOA':(vp!=='N/A'?vp:''), 'MÊS':m });
+                });
+                (r.receitas||[]).forEach(rc=>{
+                    receitasRows.push({ DATA:dataBR, 'DESCRIÇÃO':rc.descricao||'Receita', VALOR:Number(rc.valor)||0, FONTE:(r.rotas?.nome?clienteDeRota(r.rotas.nome):'OUTROS'), 'MÊS':m });
+                });
+            });
+            if (!despesasRows.length && !receitasRows.length) { toast('Sem receitas/despesas no período', 'error'); setExportando(false); return; }
+            const wb = XLSX.utils.book_new();
+            const wsD = XLSX.utils.json_to_sheet(despesasRows, { header:['DATA','DESCRIÇÃO','VALOR','CATEGORIA','VEÍCULO/PESSOA','MÊS'] });
+            const wsR = XLSX.utils.json_to_sheet(receitasRows, { header:['DATA','DESCRIÇÃO','VALOR','FONTE','MÊS'] });
+            XLSX.utils.book_append_sheet(wb, wsD, 'Despesas');
+            XLSX.utils.book_append_sheet(wb, wsR, 'Receitas');
+            XLSX.writeFile(wb, `Farias - Relatorio${clienteFiltro!=='todos'?' '+clienteFiltro:''}.xlsx`);
+            toast('Planilha gerada!');
+        } catch(e) {
+            toast('Erro ao exportar: '+(e.message||e), 'error');
+        }
+        setExportando(false);
     };
 
     const renderPagamentos = () => (
@@ -1840,10 +1893,13 @@ function RelatorioPage({ toast }) {
                                     <div className="stat-label">Despesa total</div>
                                 </div>
                             </div>
-                            <div className="stat-card" style={{marginBottom:'8px',textAlign:'center'}}>
+                            <div className="stat-card" style={{marginBottom:'10px',textAlign:'center'}}>
                                 <div className="stat-label">Saldo do período</div>
                                 <div className="stat-value-sm" style={{color: saldoPeriodo>=0?'var(--green)':'var(--red)', fontSize:'22px'}}>{fmtBRL(saldoPeriodo)}</div>
                             </div>
+                            <button className="btn btn-primary" style={{marginBottom:'8px'}} onClick={exportarXLSX} disabled={exportando}>
+                                {exportando ? 'Gerando planilha...' : '⬇️ Baixar Excel (receitas e despesas)'}
+                            </button>
                             <div style={{textAlign:'right',marginBottom:'12px'}}>
                                 <button className="lock-btn" onClick={sairAdmin}>🔒 Sair do modo admin</button>
                             </div>
