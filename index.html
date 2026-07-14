@@ -1698,14 +1698,16 @@ function RelatorioPage({ toast }) {
                 const dataBR = formatDate(r.data);
                 const m = mesDe(r.data);
                 const rota = r.rotas?.nome || '';
+                const veic = r.veiculos?.nome || '';
+                const comVeic = (pessoa) => veic ? (veic + ' / ' + (pessoa||'')) : (pessoa||'');
                 // Diária do motorista
                 if ((Number(r.valor_motorista)||0) > 0) {
-                    despAoA.push([ dataBR, juntar('Diária motorista', rota), Number(r.valor_motorista), 'Diária motorista', r.motoristas?.nome||'', m ]);
+                    despAoA.push([ dataBR, juntar('Diária motorista', rota), Number(r.valor_motorista), 'Diária motorista', comVeic(r.motoristas?.nome), m ]);
                 }
                 // Diária do ajudante (avulso quando não há motorista na rota)
                 if ((Number(r.valor_ajudante)||0) > 0) {
                     const avulso = !r.motorista_id;
-                    despAoA.push([ dataBR, juntar(avulso?'Diária ajudante avulso':'Diária ajudante', rota), Number(r.valor_ajudante), avulso?'Ajudante avulso':'Diária ajudante', r.ajudantes?.nome||'', m ]);
+                    despAoA.push([ dataBR, juntar(avulso?'Diária ajudante avulso':'Diária ajudante', rota), Number(r.valor_ajudante), avulso?'Ajudante avulso':'Diária ajudante', comVeic(r.ajudantes?.nome), m ]);
                 }
                 // Despesas avulsas do registro (nome digitado + rota; veículo/pessoa na coluna)
                 (r.despesas||[]).forEach(d=>{
