@@ -1105,10 +1105,32 @@ const sha256Hex = async (text) => {
     return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 };
 
-// Rota "# BASE": motorista ficou na base (sem rota/veículo)
-const isRotaBase = (nome) => (nome||'').trim().toUpperCase() === '# BASE';
-// Nome do veículo a exibir num registro (mostra "# BASE" quando a rota é base)
-const veiculoLabel = (reg) => isRotaBase(reg.rotas?.nome) ? '# BASE' : (reg.veiculos?.nome || 'N/A');
+// Cliente/Fonte derivado da rota = primeira palavra do nome (JFC, LUZ, ANJOS, BASE...)
+const clienteDeRota = (nome) => {
+    if (!nome) return '—';
+    const first = nome.trim().split(/[\s\-]+/).filter(Boolean)[0];
+    return (first || nome).trim().toUpperCase();
+};
+// Rota administrativa (base/garagem/sede): sem veículo. Pega "Base - Garagem" e "# ..."
+const isRotaBase = (nome) => {
+    const t = (nome||'').trim();
+    if (!t) return false;
+    return t.startsWith('#') || clienteDeRota(t) === 'BASE';
+};
+// Nome do veículo a exibir (mostra a própria rota quando é administrativa)
+const veiculoLabel = (reg) => isRotaBase(reg.rotas?.nome) ? (reg.rotas?.nome||'').trim() : (reg.veiculos?.nome || 'N/A');
+// Nome principal de um registro (motorista, ou ajudante quando é diária só do ajudante)
+const nomePrincipal = (reg) => reg.motoristas?.nome || reg.ajudantes?.nome || 'N/A';
+
+// Carrega o SheetJS (XLSX) sob demanda — só quando exporta, pra não pesar nem quebrar o app
+const carregarXLSX = () => new Promise((resolve, reject) => {
+    if (window.XLSX) return resolve(window.XLSX);
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    s.onload = () => window.XLSX ? resolve(window.XLSX) : reject(new Error('XLSX indisponível'));
+    s.onerror = () => reject(new Error('Falha ao carregar a biblioteca de exportação'));
+    document.head.appendChild(s);
+});
 
 /* ── Toast system ── */
 let toastId = 0;
@@ -1211,9 +1233,9 @@ function RegistroPage({ toast }) {
     const updLinha = (setter, idx, campo, val) => setter(arr => arr.map((it,i)=> i===idx ? {...it,[campo]:val} : it));
     const rmLinha  = (setter, idx) => setter(arr => arr.filter((_,i)=> i!==idx));
 
-    // Rota "# BASE": motorista ficou na base, sem veículo
-    const baseRota = rotas.find(r => isRotaBase(r.nome));
-    const isBase = !!(baseRota && rotaId === baseRota.id);
+    // Rota administrativa (base/garagem, começa com "#"): sem veículo
+    const rotaSelecionada = rotas.find(r => r.id === rotaId);
+    const isBase = isRotaBase(rotaSelecionada?.nome);
 
     const limparForm = () => {
         setMotoristaId(''); setRotaId(''); setVeiculoId(''); setObservacoes('');
@@ -1223,18 +1245,26 @@ function RegistroPage({ toast }) {
     };
 
     const salvar = async () => {
-        if (!motoristaId || !rotaId || (!isBase && !veiculoId)) {
-            toast('Preencha motorista, rota e veículo', 'error');
+        if (!motoristaId && !ajudanteId) {
+            toast('Selecione ao menos um motorista ou ajudante', 'error');
+            return;
+        }
+        if (motoristaId && !rotaId) {
+            toast('Selecione a rota do motorista', 'error');
+            return;
+        }
+        if (motoristaId && rotaId && !isBase && !veiculoId) {
+            toast('Selecione o veículo', 'error');
             return;
         }
         setSaving(true);
         const payload = {
             data,
-            motorista_id: motoristaId,
+            motorista_id: motoristaId || null,
             ajudante_id: ajudanteId || null,
-            rota_id: rotaId,
-            veiculo_id: isBase ? null : veiculoId,
-            valor_motorista: parseValor(valorMotorista),
+            rota_id: rotaId || null,
+            veiculo_id: isBase ? null : (veiculoId || null),
+            valor_motorista: motoristaId ? parseValor(valorMotorista) : 0,
             valor_ajudante: ajudanteId ? parseValor(valorAjudante) : 0,
             observacoes: observacoes||null,
         };
@@ -1462,12 +1492,12 @@ function RegistroPage({ toast }) {
                     return (
                     <div key={reg.id} className="card">
                         <div className="card-header">
-                            <div className="card-driver">{reg.motoristas?.nome||'N/A'}</div>
+                            <div className="card-driver">{nomePrincipal(reg)}{!reg.motorista_id && reg.ajudante_id && <span style={{fontSize:'11px',fontWeight:'600',color:'var(--gray-400)'}}> · ajudante</span>}</div>
                         </div>
                         <div className="card-info">
-                            <div className="card-row"><span className="card-row-icon">🛣️</span>{reg.rotas?.nome||'N/A'}</div>
-                            <div className="card-row"><span className="card-row-icon">🚛</span>{veiculoLabel(reg)}</div>
-                            {reg.ajudantes?.nome && <div className="card-row"><span className="card-row-icon">🧑‍🔧</span>Ajudante: {reg.ajudantes.nome}</div>}
+                            {reg.rotas?.nome && <div className="card-row"><span className="card-row-icon">🛣️</span>{reg.rotas.nome}</div>}
+                            {(reg.veiculo_id || isRotaBase(reg.rotas?.nome)) && <div className="card-row"><span className="card-row-icon">🚛</span>{veiculoLabel(reg)}</div>}
+                            {reg.ajudantes?.nome && reg.motorista_id && <div className="card-row"><span className="card-row-icon">🧑‍🔧</span>Ajudante: {reg.ajudantes.nome}</div>}
                         </div>
                         {reg.observacoes && <div className="card-obs">{reg.observacoes}</div>}
                         {temFin && (
@@ -1506,7 +1536,7 @@ function RelatorioPage({ toast }) {
     const [dataInicio, setDataInicio] = useState('');
     const [dataFim, setDataFim] = useState('');
     const [registros, setRegistros] = useState([]);
-    const [stats, setStats] = useState({ total:0, motoristasUnicos:0, rotaMaisExecutada:'—', veiculoMaisUtilizado:'—', receitaTotal:0, despesaTotal:0 });
+    const [clienteFiltro, setClienteFiltro] = useState('todos');
     const [loading, setLoading] = useState(false);
     const [agrupar, setAgrupar] = useState('data');
     const [modo, setModo] = useState('simples');
@@ -1514,9 +1544,11 @@ function RelatorioPage({ toast }) {
     const [adminHash, setAdminHash] = useState(null);
     const [pin, setPin] = useState('');
     const [pinErro, setPinErro] = useState('');
+    const [exportando, setExportando] = useState(false);
 
     useEffect(() => { if (filtro !== 'personalizado') carregarDados(); }, [filtro]);
     useEffect(() => { if (filtro === 'personalizado' && dataInicio && dataFim) carregarDados(); }, [dataInicio, dataFim, filtro]);
+    useEffect(() => { setClienteFiltro('todos'); }, [filtro, dataInicio, dataFim]);
     useEffect(() => {
         supabase.from('config').select('valor').eq('chave','admin_senha_hash').maybeSingle()
             .then(({ data }) => setAdminHash(data?.valor || ''))
@@ -1541,35 +1573,43 @@ function RelatorioPage({ toast }) {
 
         if (err) { toast('Erro: '+err.message, 'error'); setLoading(false); return; }
 
-        const d = rows||[];
-        setRegistros(d);
+        setRegistros(rows||[]);
+        setLoading(false);
+    };
 
-        const motoristasSet = new Set(d.map(r=>r.motorista_id));
+    // Clientes disponíveis no período (derivados do prefixo da rota) e dados filtrados
+    const clientesDisponiveis = (() => {
+        const set = new Set();
+        registros.forEach(r => { if (r.rotas?.nome) set.add(clienteDeRota(r.rotas.nome)); });
+        return Array.from(set).sort();
+    })();
+    const dados = clienteFiltro==='todos' ? registros : registros.filter(r => clienteDeRota(r.rotas?.nome) === clienteFiltro);
+
+    // Estatísticas derivadas dos dados filtrados
+    const stats = (() => {
         const rotasCount = {}, veiculosCount = {};
         let receitaTotal = 0, despesaTotal = 0;
-        d.forEach(r=>{
-            rotasCount[r.rota_id]=(rotasCount[r.rota_id]||0)+1;
-            veiculosCount[r.veiculo_id]=(veiculosCount[r.veiculo_id]||0)+1;
+        dados.forEach(r=>{
+            if (r.rota_id) rotasCount[r.rota_id]=(rotasCount[r.rota_id]||0)+1;
+            if (r.veiculo_id) veiculosCount[r.veiculo_id]=(veiculosCount[r.veiculo_id]||0)+1;
             receitaTotal += somaValores(r.receitas);
             despesaTotal += (Number(r.valor_motorista)||0) + (Number(r.valor_ajudante)||0) + somaValores(r.despesas);
         });
         const topRota = Object.keys(rotasCount).reduce((a,b)=>rotasCount[a]>rotasCount[b]?a:b, null);
         const topVeiculo = Object.keys(veiculosCount).reduce((a,b)=>veiculosCount[a]>veiculosCount[b]?a:b, null);
-
-        setStats({
-            total: d.length,
-            motoristasUnicos: motoristasSet.size,
-            rotaMaisExecutada: topRota ? d.find(r=>r.rota_id===topRota)?.rotas?.nome||'—' : '—',
-            veiculoMaisUtilizado: topVeiculo ? d.find(r=>r.veiculo_id===topVeiculo)?.veiculos?.nome||'—' : '—',
+        return {
+            total: dados.length,
+            motoristasUnicos: new Set(dados.filter(r=>r.motorista_id).map(r=>r.motorista_id)).size,
+            rotaMaisExecutada: topRota ? dados.find(r=>r.rota_id===topRota)?.rotas?.nome||'—' : '—',
+            veiculoMaisUtilizado: topVeiculo ? dados.find(r=>r.veiculo_id===topVeiculo)?.veiculos?.nome||'—' : '—',
             receitaTotal,
             despesaTotal,
-        });
-        setLoading(false);
-    };
+        };
+    })();
 
     const grouped = (() => {
         const map = {};
-        registros.forEach(r=>{
+        dados.forEach(r=>{
             // No agrupamento por ajudante, ignora registros sem ajudante
             if (agrupar==='ajudante' && !r.ajudante_id) return;
             const key = agrupar==='motorista' ? (r.motoristas?.nome||'Sem motorista')
@@ -1587,7 +1627,7 @@ function RelatorioPage({ toast }) {
     /* Pagamentos por pessoa (motorista/ajudante): dias trabalhados + total a pagar */
     const pagamentos = (() => {
         const map = {};
-        registros.forEach(r=>{
+        dados.forEach(r=>{
             if (r.motorista_id) {
                 const k = 'm_'+r.motorista_id;
                 if (!map[k]) map[k] = { nome: r.motoristas?.nome||'—', papel:'Motorista', dias:new Set(), total:0 };
@@ -1614,7 +1654,7 @@ function RelatorioPage({ toast }) {
     // Receita agrupada por rota ou por motorista (somente no relatório completo)
     const receitaPor = (campo) => {
         const map = {};
-        registros.forEach(r=>{
+        dados.forEach(r=>{
             const nome = campo==='rota' ? (r.rotas?.nome||'Sem rota') : (r.motoristas?.nome||'Sem motorista');
             map[nome] = (map[nome]||0) + somaValores(r.receitas);
         });
@@ -1642,9 +1682,49 @@ function RelatorioPage({ toast }) {
         setModo('simples');
     };
 
+    // Exporta receitas e despesas do período/cliente filtrado em .xlsx (2 abas)
+    const exportarXLSX = async () => {
+        if (!dados.length) { toast('Nada para exportar neste período', 'error'); return; }
+        setExportando(true);
+        try {
+            const XLSX = await carregarXLSX();
+            const mesDe = (d) => (d||'').slice(0,7);
+            const despesasRows = [];
+            const receitasRows = [];
+            [...dados].sort((a,b)=>a.data.localeCompare(b.data)).forEach(r=>{
+                const dataBR = formatDate(r.data);
+                const m = mesDe(r.data);
+                if ((Number(r.valor_motorista)||0) > 0) {
+                    despesasRows.push({ DATA:dataBR, 'DESCRIÇÃO':'Diária motorista'+(r.rotas?.nome?(' — '+r.rotas.nome):''), VALOR:Number(r.valor_motorista), CATEGORIA:'Diária motorista', 'VEÍCULO/PESSOA':r.motoristas?.nome||'', 'MÊS':m });
+                }
+                if ((Number(r.valor_ajudante)||0) > 0) {
+                    despesasRows.push({ DATA:dataBR, 'DESCRIÇÃO':'Diária ajudante', VALOR:Number(r.valor_ajudante), CATEGORIA:'Ajudante avulso', 'VEÍCULO/PESSOA':r.ajudantes?.nome||'', 'MÊS':m });
+                }
+                (r.despesas||[]).forEach(d=>{
+                    const vp = veiculoLabel(r);
+                    despesasRows.push({ DATA:dataBR, 'DESCRIÇÃO':d.descricao||'Despesa', VALOR:Number(d.valor)||0, CATEGORIA:'', 'VEÍCULO/PESSOA':(vp!=='N/A'?vp:''), 'MÊS':m });
+                });
+                (r.receitas||[]).forEach(rc=>{
+                    receitasRows.push({ DATA:dataBR, 'DESCRIÇÃO':rc.descricao||'Receita', VALOR:Number(rc.valor)||0, FONTE:(r.rotas?.nome?clienteDeRota(r.rotas.nome):'OUTROS'), 'MÊS':m });
+                });
+            });
+            if (!despesasRows.length && !receitasRows.length) { toast('Sem receitas/despesas no período', 'error'); setExportando(false); return; }
+            const wb = XLSX.utils.book_new();
+            const wsD = XLSX.utils.json_to_sheet(despesasRows, { header:['DATA','DESCRIÇÃO','VALOR','CATEGORIA','VEÍCULO/PESSOA','MÊS'] });
+            const wsR = XLSX.utils.json_to_sheet(receitasRows, { header:['DATA','DESCRIÇÃO','VALOR','FONTE','MÊS'] });
+            XLSX.utils.book_append_sheet(wb, wsD, 'Despesas');
+            XLSX.utils.book_append_sheet(wb, wsR, 'Receitas');
+            XLSX.writeFile(wb, `Farias - Relatorio${clienteFiltro!=='todos'?' '+clienteFiltro:''}.xlsx`);
+            toast('Planilha gerada!');
+        } catch(e) {
+            toast('Erro ao exportar: '+(e.message||e), 'error');
+        }
+        setExportando(false);
+    };
+
     const renderPagamentos = () => (
         <>
-            {registros.length > 0 && (
+            {dados.length > 0 && (
                 <div style={{display:'flex',gap:'6px',marginBottom:'14px',alignItems:'center',flexWrap:'wrap'}}>
                     <span style={{fontSize:'12px',color:'var(--gray-400)',fontWeight:'600',textTransform:'uppercase',letterSpacing:'0.5px'}}>Agrupar:</span>
                     <button className={`pill${agrupar==='data'?' active':''}`} onClick={()=>setAgrupar('data')}>Por data</button>
@@ -1678,7 +1758,7 @@ function RelatorioPage({ toast }) {
     const renderLista = () => (
         loading ? (
             <div className="loading"><div className="spinner"/><br/>Carregando...</div>
-        ) : registros.length === 0 ? (
+        ) : dados.length === 0 ? (
             <div className="empty">
                 <div className="empty-icon">📊</div>
                 <div className="empty-title">Sem registros</div>
@@ -1701,21 +1781,21 @@ function RelatorioPage({ toast }) {
                         <div key={reg.id} className="card">
                             {agrupar==='data' ? (
                                 <>
-                                    <div className="card-driver">{reg.motoristas?.nome||'N/A'}</div>
+                                    <div className="card-driver">{nomePrincipal(reg)}{!reg.motorista_id && reg.ajudante_id && <span style={{fontSize:'11px',fontWeight:'600',color:'var(--gray-400)'}}> · ajudante</span>}</div>
                                     <div className="card-info" style={{marginTop:'6px'}}>
-                                        <div className="card-row"><span className="card-row-icon">🛣️</span>{reg.rotas?.nome||'N/A'}</div>
-                                        <div className="card-row"><span className="card-row-icon">🚛</span>{veiculoLabel(reg)}</div>
-                                        {reg.ajudantes?.nome && <div className="card-row"><span className="card-row-icon">🧑‍🔧</span>Ajudante: {reg.ajudantes.nome}</div>}
+                                        {reg.rotas?.nome && <div className="card-row"><span className="card-row-icon">🛣️</span>{reg.rotas.nome}</div>}
+                                        {(reg.veiculo_id || isRotaBase(reg.rotas?.nome)) && <div className="card-row"><span className="card-row-icon">🚛</span>{veiculoLabel(reg)}</div>}
+                                        {reg.ajudantes?.nome && reg.motorista_id && <div className="card-row"><span className="card-row-icon">🧑‍🔧</span>Ajudante: {reg.ajudantes.nome}</div>}
                                     </div>
                                 </>
                             ) : (
                                 <>
                                     <div className="card-header">
-                                        <div className="card-row"><span className="card-row-icon">🛣️</span><strong>{reg.rotas?.nome||'N/A'}</strong></div>
+                                        <div className="card-row"><span className="card-row-icon">{reg.rotas?.nome ? '🛣️' : '👤'}</span><strong>{reg.rotas?.nome || nomePrincipal(reg)}</strong></div>
                                         <div className="card-date-badge">{formatDate(reg.data)}</div>
                                     </div>
-                                    <div className="card-row" style={{marginTop:'4px'}}><span className="card-row-icon">👤</span>{reg.motoristas?.nome||'N/A'}</div>
-                                    <div className="card-row" style={{marginTop:'4px'}}><span className="card-row-icon">🚛</span>{veiculoLabel(reg)}</div>
+                                    {reg.motoristas?.nome && <div className="card-row" style={{marginTop:'4px'}}><span className="card-row-icon">👤</span>{reg.motoristas.nome}</div>}
+                                    {(reg.veiculo_id || isRotaBase(reg.rotas?.nome)) && <div className="card-row" style={{marginTop:'4px'}}><span className="card-row-icon">🚛</span>{veiculoLabel(reg)}</div>}
                                     {reg.ajudantes?.nome && <div className="card-row" style={{marginTop:'4px'}}><span className="card-row-icon">🧑‍🔧</span>Ajudante: {reg.ajudantes.nome}</div>}
                                 </>
                             )}
@@ -1765,6 +1845,16 @@ function RelatorioPage({ toast }) {
                 </div>
             )}
 
+            {clientesDisponiveis.length > 1 && (
+                <div className="filter-pills" style={{marginTop:'-4px'}}>
+                    <span style={{fontSize:'12px',color:'var(--gray-400)',fontWeight:'600',textTransform:'uppercase',letterSpacing:'0.5px',alignSelf:'center',marginRight:'2px'}}>Cliente:</span>
+                    <button className={`pill${clienteFiltro==='todos'?' active':''}`} onClick={()=>setClienteFiltro('todos')}>Todos</button>
+                    {clientesDisponiveis.map(c=>(
+                        <button key={c} className={`pill${clienteFiltro===c?' active':''}`} onClick={()=>setClienteFiltro(c)}>{c}</button>
+                    ))}
+                </div>
+            )}
+
             <div className="mode-tabs">
                 <button className={`mode-tab${modo==='simples'?' active':''}`} onClick={()=>setModo('simples')}>📋 Simples</button>
                 <button className={`mode-tab${modo==='completo'?' active':''}`} onClick={()=>setModo('completo')}>{adminOk ? '📊 Completo' : '🔒 Completo'}</button>
@@ -1803,10 +1893,13 @@ function RelatorioPage({ toast }) {
                                     <div className="stat-label">Despesa total</div>
                                 </div>
                             </div>
-                            <div className="stat-card" style={{marginBottom:'8px',textAlign:'center'}}>
+                            <div className="stat-card" style={{marginBottom:'10px',textAlign:'center'}}>
                                 <div className="stat-label">Saldo do período</div>
                                 <div className="stat-value-sm" style={{color: saldoPeriodo>=0?'var(--green)':'var(--red)', fontSize:'22px'}}>{fmtBRL(saldoPeriodo)}</div>
                             </div>
+                            <button className="btn btn-primary" style={{marginBottom:'8px'}} onClick={exportarXLSX} disabled={exportando}>
+                                {exportando ? 'Gerando planilha...' : '⬇️ Baixar Excel (receitas e despesas)'}
+                            </button>
                             <div style={{textAlign:'right',marginBottom:'12px'}}>
                                 <button className="lock-btn" onClick={sairAdmin}>🔒 Sair do modo admin</button>
                             </div>
