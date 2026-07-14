@@ -1930,7 +1930,7 @@ function RelatorioPage({ toast }) {
                                 <div className="stat-value-sm" style={{color: saldoPeriodo>=0?'var(--green)':'var(--red)', fontSize:'22px'}}>{fmtBRL(saldoPeriodo)}</div>
                             </div>
                             <div style={{display:'flex',gap:'8px',marginBottom:'14px'}}>
-                                <button className="btn btn-primary" style={{flex:1,boxShadow:'none'}} onClick={exportarXLSX} disabled={exportando}>
+                                <button className="btn" style={{flex:1,background:'#217346',color:'#fff',opacity:exportando?0.6:1}} onClick={exportarXLSX} disabled={exportando}>
                                     {exportando ? 'Gerando...' : '⬇️ Baixar Excel'}
                                 </button>
                                 <button className="btn" style={{flex:1,fontSize:'14px',background:'var(--red)',color:'#fff'}} onClick={sairAdmin}>🔒 Sair modo Admin</button>
